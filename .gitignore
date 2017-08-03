@@ -1,0 +1,17 @@
+# autosave
+*~
+.*~
+\#*
+.\#*
+nohup.out
+
+#python stuff
+.pydevproject
+*.pyc
+
+# potentially large files
+*.hdf5
+*.bin
+*.dat
+*.pdf
+*.png
