@@ -35,10 +35,10 @@ def ic_sync_loss_rate(p, magnetic_field, redshift_z):
     magnetic_field_CMB     = 3.24E-6    # [Gauss]
     return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * (1 + (magnetic_field / (CMB_MAGNETIC_FIELD * (1+redshift_z)**2 ))**2   )  * (1+redshift_z)**4  * CMB_ENERGY_DENSITY
 
-def ic_loss_rate(p, redshift_z):
+def ic_loss_rate(p, u_star_cmb_ratio, redshift_z):
     cmb_energy_density     = 0.26# [eV cm^-3]
     magnetic_field_CMB     = 3.24E-6    # [Gauss]
-    return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * (1+redshift_z)**4  * CMB_ENERGY_DENSITY
+    return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * (1+redshift_z)**4  * ( 1 + star_cmb_ratio) * CMB_ENERGY_DENSITY
 
 def sync_loss_rate(p, magnetic_field):
     cmb_energy_density     = 0.26# [eV cm^-3]
