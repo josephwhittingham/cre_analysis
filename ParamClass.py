@@ -447,8 +447,8 @@ class TracerOutput:
         # with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
         # need to set dummy values as these determine the types        
         checkNumberEncoding()
-        self.n_snaps = 99
-        self.num = 0
+        self.nSnap = 99
+        self.nPart = 0
         if fname is not None:
             self.read_data(fname,with_cr_electrons)
 
@@ -464,67 +464,73 @@ class TracerOutput:
             size_d = struct.calcsize('d')
 
             dummy = int(struct.unpack('i',f.read(size_i))[0])
-            if with_cr_electrons:
-                self.num = (dummy - 8 ) / ( 12 * size_f + size_i)
+            if with_cr_electrons == 1:
+                self.nPart = (dummy - size_d) / (12 * size_f + size_i)
             else:
-                self.num = (dummy - 8 ) / ( 6 * size_f)
-            print 'Number of particles: {:d}'.format(self.num)
+                self.nPart = (dummy - size_d) / (6 * size_f)
 
-            # get number of snapshots by iterating over complete file
-            for n in np.arange(self.n_snaps):
+            self.nSnap	= 0
+            buf 	= 1
+
+            while(buf):
+                # move pointer forward
+                f.seek(size_d + 6 * self.nPart * size_f, 1) 
                 if with_cr_electrons:
-                    f.seek(size_d + 12*self.num*size_f + self.num*size_i, 1)
-                else:
-                    f.seek(size_d + 6 * size_f, 1)
+                    # move pointer forward
+                    f.seek(6 * self.nPart * size_f + self.nPart * size_i, 1)
 
                 if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
-                    sys.exit("data not correctly enclosed, ")
+                    sys.exit("data not correctly enclosed 1, ")
 
+                self.nSnap += 1
                 buf = f.read(size_i)
-                if not(buf):
-                    self.n_snaps = n+1
-                    print 'Number of snapshots: {:d}'.format(self.n_snaps)
-                    break
 
-    
-            f.seek(0,0)
-            # get now the actual data
-            self.time = np.ndarray(self.n_snaps,dtype=float)
-            self.x = np.ndarray((self.num,self.n_snaps),dtype=float)
-            self.y = np.ndarray((self.num,self.n_snaps),dtype=float)
-            self.z = np.ndarray((self.num,self.n_snaps),dtype=float)
-            self.rho = np.ndarray((self.num,self.n_snaps),dtype=float)
-            self.temp = np.ndarray((self.num,self.n_snaps),dtype=float)
-            self.Utherm = np.ndarray((self.num,self.n_snaps),dtype=float)
+            # go back to the beginning of the file
+            f.seek(size_i, 0)
+            buf = 0
+            print 'Number of particles: {:d}'.format(self.nPart)
+            print 'Number of snapshots: {:d}'.format(self.nSnap)
+
+            # create the arrays    
+            self.time	= np.ndarray(self.nSnap, dtype = float)
+            self.x	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+            self.y	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+            self.z	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+            self.rho   	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+            self.temp	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+            self.Utherm	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+
             if with_cr_electrons:
-                self.B = np.ndarray((self.num,self.n_snaps),dtype=float)
-                self.Dist = np.ndarray((self.num,self.n_snaps),dtype=float)
-                self.Comp = np.ndarray((self.num,self.n_snaps),dtype=float)
-                self.BRat = np.ndarray((self.num,self.n_snaps),dtype=float)
-                self.eInjection = np.ndarray((self.num,self.n_snaps),dtype=int)
-                self.eEnergyPerMass = np.ndarray((self.num,self.n_snaps),dtype=float)
-                self.V = np.ndarray((self.num,self.n_snaps),dtype=float)
+                self.B			= np.ndarray((self.nPart, self.nSnap), dtype=float)
+                self.Dist		= np.ndarray((self.nPart, self.nSnap), dtype=float)
+                self.Comp		= np.ndarray((self.nPart, self.nSnap), dtype=float)
+                self.BRat		= np.ndarray((self.nPart, self.nSnap), dtype=float)
+                self.eInjection		= np.ndarray((self.nPart, self.nSnap), dtype=int)
+                self.eEnergyPerMass	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+                self.V			= np.ndarray((self.nPart, self.nSnap), dtype=float)
 
-            for n in np.arange(self.n_snaps):
-                dummy = int(struct.unpack('i',f.read(size_i))[0])
-                self.time[n] = float(struct.unpack('d',f.read(size_d))[0])
-                self.x[:,n] =      [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                self.y[:,n] =      [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                self.z[:,n] =      [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                self.rho[:,n] =    [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                self.temp[:,n] =   [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                self.Utherm[:,n] = [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
+            # read the data
+            for n in np.arange(self.nSnap):
+                self.time[n]		= float(struct.unpack('d', f.read(size_d))[0])
+                self.x[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                self.y[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                self.z[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                self.rho[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                self.temp[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                self.Utherm[:, n]	= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
                 if with_cr_electrons:
-                    self.B[:,n] =  [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                    self.eInjection[:,n] = [int(ii) for ii in struct.unpack('{:d}i'.format(self.num),f.read(size_i*self.num))]
-                    self.eEnergyPerMass[:,n] = [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]    
-                    self.Dist[:,n] = [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                    self.Comp[:,n] = [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                    self.BRat[:,n] = [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
-                    self.V[:,n] =    [float(ff) for ff in struct.unpack('{:d}f'.format(self.num),f.read(size_f*self.num))]
+                    self.B[:, n]			= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                    self.eInjection[:, n]		= struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+                    self.eEnergyPerMass[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))	
+                    self.Dist[:, n]			= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                    self.Comp[:, n]			= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                    self.BRat[:, n]			= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+                    self.V[:, n]			= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
-                if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
+                if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
                     sys.exit("data not correctly enclosed, ")
+
+                f.seek(size_i, 1)
 
             f.close()
 
