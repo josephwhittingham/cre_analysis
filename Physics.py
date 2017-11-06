@@ -100,6 +100,10 @@ def F_int(x):
 def F(x):
 	return quad(F_int,0,x, limit=100,maxp1=100,limlst=100)[0]
 
+def F_err(x):
+	return quad(F_int,0,x)[1]
+
+
 def chi(p):
 	#if type(p) is np.ndarray:
 	#    return np.array([3./4. * (np.log(2 * (np.square(pp) + 1.)) - 1./3.) for pp in p])
