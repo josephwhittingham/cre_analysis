@@ -98,7 +98,7 @@ def F_int(x):
 	return np.log(1 + x) / x
 
 def F(x):
-	return quad(F_int,0,x)[0]
+	return quad(F_int,0,x, limit=100,maxp1=100,limlst=100)[0]
 
 def chi(p):
 	#if type(p) is np.ndarray:
@@ -158,7 +158,7 @@ def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne,
 	# first calculate the parameters of the steady state spectrum
 	pCut = np.sqrt( ((comp - 1.) * 3. * ELECTRONCHARGE * B)	/
 				 (THOMPSON * comp * CMB_ENERGY_DENSITY *
-				  (1. + comp * BRat + np.square(B / CMB_MAGNETIC_FIELD) * (1. + comp / BRat) )) ) * 0.5 * V / CLIGHT
+				  (1. + u_star_cmb_ratio + comp * BRat + np.square(B / CMB_MAGNETIC_FIELD) * (1. + comp / BRat) )) ) * 0.5 * V / CLIGHT
 	alphaInj = 3. * comp / ( comp - 1.)
 
 	fA = cInj / ((alphaInj - 1.) * (coulomb_loss_rate(p, ne) + 0* bremsstrahlung_loss_rate(p, n_gas) + sync_loss_rate(p, B ) + ic_loss_rate(p, u_star_cmb_ratio, z ))) * np.power(p, - alphaInj + 1) * np.power((1. + param.ShockParamA * np.power(p/pCut, param.ShockParamB)), param.ShockParamC) * np.exp( - np.square( p / pCut))

@@ -515,14 +515,16 @@ class TracerOutput:
 
 			# create the arrays    
 			self.time	= np.ndarray(self.nSnap, dtype = float)
+			self.redshift = np.ndarray(self.nSnap, dtype = float) # TODO: Read real data or calculate them
 			self.x	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.y	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.z	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.rho   	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.temp	= np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.Utherm	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.u_therm = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
 			if with_cr_electrons:
+				self.u_photon   = np.ndarray((self.nPart, self.nSnap), dtype=float) # TODO: Read real data or calculate them
 				self.B			= np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.Dist		= np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.Comp		= np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -539,7 +541,7 @@ class TracerOutput:
 				self.z[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.rho[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.temp[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.Utherm[:, n]	= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.u_therm[:, n]	= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				if with_cr_electrons:
 					self.B[:, n]			= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.eInjection[:, n]		= struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
