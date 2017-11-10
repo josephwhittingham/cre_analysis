@@ -30,15 +30,15 @@ def coulomb_loss_rate(p, n_e ):
 				- np.log(2.) * ((beta_factor(p))**2/2. + 1./gamma_factor(p))  + 0.5 + ( (gamma_factor(p)-1.) / (4 * gamma_factor(p)) )**2
 				)
 
-def ic_sync_loss_rate(p, u_star_cmb_ratio, magnetic_field, redshift_z):
+def ic_sync_loss_rate(p, u_photon, magnetic_field, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * (1 + u_star_cmb_ratio + (magnetic_field / (CMB_MAGNETIC_FIELD * (1+redshift_z)**2 ))**2   )  * (1+redshift_z)**4  * CMB_ENERGY_DENSITY
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * ( (np.power(1+redshift_z,4) + (magnetic_field / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + u_photon) 
 
-def ic_loss_rate(p, u_star_cmb_ratio, redshift_z):
+def ic_loss_rate(p, u_photon, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * (1+redshift_z)**4  * ( 1 + u_star_cmb_ratio) * CMB_ENERGY_DENSITY
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * ( np.power(1+redshift_z,4) * CMB_ENERGY_DENSITY + u_photon) 
 
 def sync_loss_rate(p, magnetic_field):
 	cmb_energy_density     = 0.26# [eV cm^-3]
@@ -128,7 +128,7 @@ def bremsstrahlung_loss_rate(p, n_gas):
 
 
 ######################################################################################
-def SolutionSteadyStateElectrons(p, param, ne, B, z):
+def SolutionSteadyStateElectrons(p, param, ne, u_photon, B, z):
 	# p         Momenta
 	# param     instance of CRelectronParameters class
 	# ne        electron density        
@@ -138,14 +138,14 @@ def SolutionSteadyStateElectrons(p, param, ne, B, z):
 
 	for i in np.arange(p.size):
 		if p[i] >= param.SourceLowCutoff:
-			fA[i] = param.SourceNormalization * pow(p[i],1-param.SourceSpectralIndex) / abs(coulomb_loss_rate(p[i],ne) + ic_sync_loss_rate(p[i], B, z)) / (param.SourceSpectralIndex - 1)
+			fA[i] = param.SourceNormalization * pow(p[i],1-param.SourceSpectralIndex) / abs(coulomb_loss_rate(p[i],ne) + ic_sync_loss_rate(p[i], u_photon, B, z)) / (param.SourceSpectralIndex - 1)
 		else:
-			fA[i] = param.SourceNormalization * pow(param.SourceLowCutoff,1-param.SourceSpectralIndex) / abs(coulomb_loss_rate(p[i],ne) + ic_sync_loss_rate(p[i], B, z)) / (param.SourceSpectralIndex - 1)
+			fA[i] = param.SourceNormalization * pow(param.SourceLowCutoff,1-param.SourceSpectralIndex) / abs(coulomb_loss_rate(p[i],ne) + ic_sync_loss_rate(p[i], u_photon, B, z)) / (param.SourceSpectralIndex - 1)
 	
 	return fA
 
 ######################################################################################
-def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne, n_gas, u_star_cmb_ratio, z):
+def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne, n_gas, u_photon, z):
 	# p         Momenta
 	# param     instance of CRelectronParameters class
 	# c_inj     injection rate
@@ -160,12 +160,12 @@ def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne,
 	fA = np.zeros(p.size)
 
 	# first calculate the parameters of the steady state spectrum
-	pCut = np.sqrt( ((comp - 1.) * 3. * ELECTRONCHARGE * B)	/
-				 (THOMPSON * comp * CMB_ENERGY_DENSITY *
-				  (1. + u_star_cmb_ratio + comp * BRat + np.square(B / CMB_MAGNETIC_FIELD) * (1. + comp / BRat) )) ) * 0.5 * V / CLIGHT
+	pCut = 0.5 * V / CLIGHT *np.sqrt( (comp - 1.) * 3. * ELECTRONCHARGE * B / (THOMPSON * comp * 
+				  (CMB_ENERGY_DENSITY * ( ( 1. + comp * BRat)*np.power(1+z,4) + np.square(B / CMB_MAGNETIC_FIELD) * (1. + comp / BRat) )
+				   + u_photon * ( 1 + + comp * BRat) ))) 
 	alphaInj = 3. * comp / ( comp - 1.)
 
-	fA = cInj / ((alphaInj - 1.) * (coulomb_loss_rate(p, ne) + 0* bremsstrahlung_loss_rate(p, n_gas) + sync_loss_rate(p, B ) + ic_loss_rate(p, u_star_cmb_ratio, z ))) * np.power(p, - alphaInj + 1) * np.power((1. + param.ShockParamA * np.power(p/pCut, param.ShockParamB)), param.ShockParamC) * np.exp( - np.square( p / pCut))
+	fA = cInj / ((alphaInj - 1.) * (coulomb_loss_rate(p, ne) + bremsstrahlung_loss_rate(p, n_gas) + ic_sync_loss_rate(p, u_photon, B, z))) * np.power(p, - alphaInj + 1) * np.power((1. + param.ShockParamA * np.power(p/pCut, param.ShockParamB)), param.ShockParamC) * np.exp( - np.square( p / pCut))
 	
 	return fA
 

@@ -132,7 +132,7 @@ class SnapshotData:
 		#self.pos_x    = np.zeros(self.NumberOfSnapshotsMax)
 		#self.pos_y    = np.zeros(self.NumberOfSnapshotsMax)
 		#self.pos_z    = np.zeros(self.NumberOfSnapshotsMax)
-		self.rho    = np.zeros(self.NumberOfSnapshotsMax)
+		self.n_gas    = np.zeros(self.NumberOfSnapshotsMax)
 		#self.u        = np.zeros(self.NumberOfSnapshotsMax)
 		#self.vel_x    = np.zeros(self.NumberOfSnapshotsMax)
 		#self.vel_y    = np.zeros(self.NumberOfSnapshotsMax)
@@ -149,8 +149,8 @@ class SnapshotData:
 	def read_data(self,DataFileName):
 		fData = open(DataFileName)
 		print "Reading data from file '{:}'\n".format(DataFileName)
-		print "\t time (s) \t rho (cm^-3) \t B (G) \n"        
-		#print "\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t rho \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n"
+		print "\t time (s) \t n_gas (cm^-3) \t B (G) \n"        
+		#print "\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t n_gas \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n"
 		for line in fData:
 			lineData = (line.strip()).lstrip()
 			if(lineData != ''): #ignore empty lines
@@ -160,18 +160,18 @@ class SnapshotData:
 					#self.pos_x[self.NumberOfSnapshots]    = float(columnData[1])
 					#self.pos_y[self.NumberOfSnapshots]     = float(columnData[2])
 					#self.pos_z[self.NumberOfSnapshots]     = float(columnData[3])
-					self.rho[self.NumberOfSnapshots]     = float(columnData[4])
+					self.n_gas[self.NumberOfSnapshots]     = float(columnData[4])
 					#self.u[self.NumberOfSnapshots]         = float(columnData[5])
 					#self.vel_x[self.NumberOfSnapshots]     = float(columnData[6])
 					#self.vel_y[self.NumberOfSnapshots]     = float(columnData[7])
 					#self.vel_z[self.NumberOfSnapshots]     = float(columnData[8])
 					#self.dedt[self.NumberOfSnapshots]     = float(columnData[9])
 					self.B[self.NumberOfSnapshots]     = float(columnData[10])
-					#print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.pos_x[self.NumberOfSnapshots], self.pos_y[self.NumberOfSnapshots], self.pos_z[self.NumberOfSnapshots], self.rho[self.NumberOfSnapshots], self.u[self.NumberOfSnapshots], self.vel_x[self.NumberOfSnapshots], self.vel_y[self.NumberOfSnapshots], self.vel_z[self.NumberOfSnapshots], self.dedt[self.NumberOfSnapshots])
-					print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.rho[self.NumberOfSnapshots],self.B[self.NumberOfSnapshots])
+					#print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.pos_x[self.NumberOfSnapshots], self.pos_y[self.NumberOfSnapshots], self.pos_z[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots], self.u[self.NumberOfSnapshots], self.vel_x[self.NumberOfSnapshots], self.vel_y[self.NumberOfSnapshots], self.vel_z[self.NumberOfSnapshots], self.dedt[self.NumberOfSnapshots])
+					print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.B[self.NumberOfSnapshots])
 					self.NumberOfSnapshots += 1
 		self.time.resize(self.NumberOfSnapshots)
-		self.rho.resize(self.NumberOfSnapshots)
+		self.n_gas.resize(self.NumberOfSnapshots)
 		#self.pos_x.resize(self.NumberOfSnapshots)
 		#self.pos_y.resize(self.NumberOfSnapshots)
 		#self.pos_z.resize(self.NumberOfSnapshots)
@@ -190,9 +190,9 @@ class SnapshotData:
 
 	def show(self):
 		print "Number of Snapshots: {:d}".format(self.NumberOfSnapshots)
-		print "\t time (s) \t rho (cm^-3) \t B (G) \n"
+		print "\t time (s) \t n_gas (cm^-3) \t B (G) \n"
 		for i in np.arange(NumberOfSnapshots):
-			print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[i], self.rho[i],self.B[i])
+			print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[i], self.n_gas[i],self.B[i])
 		print ''
 
 ######################################################################################
@@ -209,7 +209,7 @@ class SnapshotData2:
 	def __init__(self,DataFileName = None):
 		self.NumberOfSnapshots = 0
 		self.time    = np.ndarray(self.NumberOfSnapshotsMax,dtype=float)
-		self.rho    = np.ndarray(self.NumberOfSnapshotsMax,dtype=float)
+		self.n_gas    = np.ndarray(self.NumberOfSnapshotsMax,dtype=float)
 		self.T        = np.ndarray(self.NumberOfSnapshotsMax,dtype=float)
 		self.B        = np.ndarray(self.NumberOfSnapshotsMax,dtype=float)
 		self.inj    = np.ndarray(self.NumberOfSnapshotsMax,dtype=int)
@@ -223,22 +223,22 @@ class SnapshotData2:
 	def read_data(self,DataFileName):
 		fData = open(DataFileName)
 		print "Reading data from file '{:}'\n".format(DataFileName)
-		print "\t time (s) \t rho (cm^-3) \t T (K) \t B (G) \t inj \n"        
-		#print "\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t rho \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n"
+		print "\t time (s) \t n_gas (cm^-3) \t T (K) \t B (G) \t inj \n"        
+		#print "\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t n_gas \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n"
 		for line in fData:
 			lineData = (line.strip()).lstrip()
 			if(lineData != ''): #ignore empty lines
 				if(lineData != '%' and lineData != '#'): # ignore the symbols %,#
 					columnData = line.split()
 					self.time[self.NumberOfSnapshots]     = float(columnData[0])
-					self.rho[self.NumberOfSnapshots]     = float(columnData[1])
+					self.n_gas[self.NumberOfSnapshots]     = float(columnData[1])
 					self.T[self.NumberOfSnapshots]         = float(columnData[2])
 					self.B[self.NumberOfSnapshots]         = float(columnData[3])
 					self.inj[self.NumberOfSnapshots]     = int(columnData[4])
-					print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.rho[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots])
+					print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots])
 					self.NumberOfSnapshots += 1
 		self.time.resize(self.NumberOfSnapshots)
-		self.rho.resize(self.NumberOfSnapshots)
+		self.n_gas.resize(self.NumberOfSnapshots)
 		self.T.resize(self.NumberOfSnapshots)
 		self.B.resize(self.NumberOfSnapshots)
 		self.inj.resize(self.NumberOfSnapshots)
@@ -251,9 +251,9 @@ class SnapshotData2:
 
 	def show(self):
 		print "Number of Snapshots: {:d}".format(self.NumberOfSnapshots)
-		print "\t time (s) \t rho (cm^-3) \t T (K) \t B (G) \t inj \n"        
+		print "\t time (s) \t n_gas (cm^-3) \t T (K) \t B (G) \t inj \n"        
 		for i in np.arange(NumberOfSnapshots):
-			print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.rho[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots])
+			print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots])
 		print ''
 
 	
@@ -279,7 +279,7 @@ class runErrorRelative:
 	def __init__(self,runErrorFile = None):
 		self.nPoints = 0
 		self.time    = np.zeros(self.nPointsMax)
-		self.rho    = np.zeros(self.nPointsMax)
+		self.n_gas    = np.zeros(self.nPointsMax)
 		self.err    = np.zeros(self.nPointsMax)
 		
 		if runErrorFile is not None:
@@ -299,12 +299,12 @@ class runErrorRelative:
 				if(lineData != '%' and lineData != '#'): # ignore the symbols %,#
 					columnData = line.split()
 					self.time[self.nPoints] = columnData[0]
-					self.rho[self.nPoints]    = columnData[1]
+					self.n_gas[self.nPoints]    = columnData[1]
 					self.err[self.nPoints]    = columnData[2]
-					print '\t {:E} \t {:E} \t {:E}'.format(self.time[self.nPoints], self.rho[self.nPoints], self.err[self.nPoints])
+					print '\t {:E} \t {:E} \t {:E}'.format(self.time[self.nPoints], self.n_gas[self.nPoints], self.err[self.nPoints])
 					self.nPoints+=1
 		self.time.resize(self.nPoints)
-		self.rho.resize(self.nPoints)
+		self.n_gas.resize(self.nPoints)
 		self.err.resize(self.nPoints)
 
 		print '\n'
@@ -519,7 +519,7 @@ class TracerOutput:
 			self.x	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.y	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.z	= np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.rho   	= np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.n_gas	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.temp	= np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.u_therm = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
@@ -539,7 +539,7 @@ class TracerOutput:
 				self.x[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.y[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.z[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.rho[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.n_gas[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.temp[:, n]		= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.u_therm[:, n]	= struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				if with_cr_electrons:
