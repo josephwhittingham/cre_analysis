@@ -64,6 +64,11 @@ class CRelectronParameters:
 		self.UseSemiAnalyticSolutionHigh = 0
 		self.FunctionValueChop           = 1.e-30
 
+		# fixed boundary for numerics/semi analytic
+		self.FlagFixedNumericsBoundaries = 0
+		self.MaximumMomentumNumerics = 0.
+		self.MinimimMomentumNumerics = 0.
+
 		if ParameterFileName is not None:
 			self.read_data(ParameterFileName)
 
