@@ -67,7 +67,7 @@ class CRelectronParameters:
 		# fixed boundary for numerics/semi analytic
 		self.FlagFixedNumericsBoundaries = 0
 		self.MaximumMomentumNumerics = 0.
-		self.MinimimMomentumNumerics = 0.
+		self.MinimumMomentumNumerics = 0.
 
 		if ParameterFileName is not None:
 			self.read_data(ParameterFileName)
