@@ -360,3 +360,13 @@ class CharacteristicValues:
 
 	def calc_number(self, p, f):
 		return simps(f[self.imin:self.imax], p[self.imin:self.imax])
+
+def CalculateMomentumGrid(MinimumMomentum, MaximumMomentum, NumberOfMomentumBins, IncludeMaximumMomentum=False):
+	if IncludeMaximumMomentum:
+		del_p = (np.log(MaximumMomentum) - np.log(MinimumMomentum)) / (NumberOfMomentumBins - 1)
+	else:
+		del_p = (np.log(MaximumMomentum) - np.log(MinimumMomentum)) / (NumberOfMomentumBins)
+
+	p = np.array([MinimumMomentum * np.exp( del_p * i) for i in np.arange(NumberOfMomentumBins)])
+
+	return p
