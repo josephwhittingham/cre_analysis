@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import struct
+import sys
 
 
 ######################################################################################
@@ -26,12 +27,15 @@ class CRelectronParameters:
 		self.MinimumMomentum             = 0.0
 		self.MaximumMomentum             = 0.0
 		self.TimeStepsUpdate             = 1
+		self.IncludeMaximumMomentum      = 0
 
 		# CR density distribution function
 		self.AlphaSpectralIndex          = 0.0
 		self.MomentumLowCutoff           = 0.0
 		self.MomentumHighCutoff          = 0.0
 		self.NormalizationFactor         = 0.0
+		self.InitialSpectrumFile         = ''
+		self.UseInitialSpectrumFile      = 0
 
 		# Flags
 		self.FlagLogGrid                 = 1 # obsolete
@@ -426,6 +430,36 @@ class DistributionFunction:
 		i = None
 		fSnap.close()
 
+
+######################################################################################
+# Read the distribution function
+def SpectrumSnapshot(fname,  nBinsIn=None):
+
+	size_i, size_f, size_d = checkNumberEncoding()
+	with open(fname,'rb') as file:
+		print "Reading snapshot data from file '{:}'".format(fname)
+
+		# Read first information block with number of particles and momentum bins
+		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		if nBinsIn != None:
+			if dummy != nBinsIn * size_d:
+				sys.exit("Block size is {:d} dummy, but expected {:d}".format(dummy, nBins * size_d))
+
+		nBins = dummy / size_d
+	
+		f = np.array(struct.unpack('{:d}d'.format(nBins), file.read(size_d * nBins)))
+
+		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		if dummy != nBins * size_d:
+			sys.exit("1st data block not correctly enclosed")
+
+		file.close()
+
+	return f
+
+
+
+######################################################################################
 ## gives two numbers for representing a float in scientific notation
 ## 23. will return [2.3,1]
 def exp_rep(f):
@@ -571,23 +605,23 @@ class TracerOutput:
 
 ####################################################################################
 # Function to check whether system encoding of int, float and double is correct
-# returns 0 if everything is alright
+# returns the sizes of int, float and double if everything is alright
 def checkNumberEncoding():
 	error = [0,0,0]
 
 	# check integers
-	size = struct.calcsize('i')
-	if size != 4:
+	size_i = struct.calcsize('i')
+	if size_i != 4:
 		error[0] = 1
 
 	# check single precision floats
-	size = struct.calcsize('f')
-	if size !=4:
+	size_f = struct.calcsize('f')
+	if size_f !=4:
 		error[1] = 1
 
 	# check double precision floats
-	size = struct.calcsize('d')
-	if size !=8:
+	size_d = struct.calcsize('d')
+	if size_d !=8:
 		error[2] = 1
 
 	if sum(error) > 0 :
@@ -599,4 +633,183 @@ def checkNumberEncoding():
 			["", "double"][error[2]==1]))
 
 	else:
-		return 0
+		return size_i, size_f, size_d
+
+####################################################################################
+# Function for writing out the tracer data in arepostyle
+# returns 0 if everything is alright
+def writeTracerArepo(fileName, nSnap, nPart, time, pos_x, pos_y, pos_z, rho, temp, Utherm, b_field, eInjection, dist_to_shock, compression_ratio, b_field_ratio, eEnergyPerMass, V_pre_Shock):
+	
+	size_i, size_f, size_d = checkNumberEncoding()
+
+	# do some consistency checks
+	if time.shape != (nSnap,):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d},)".format('time',time.shape, nSnap))
+
+	if pos_x.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pos_x', pos_x.shape, nPart, nSnap))
+
+	if pos_y.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pos_y', pos_y.shape, nPart, nSnap))
+
+	if pos_z.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pos_z', pos_z.shape, nPart, nSnap))
+
+	if rho.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('rho', rho.shape, nPart, nSnap))
+
+	if temp.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('temp', temp.shape, nPart, nSnap))
+
+	if Utherm.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('Utherm', Utherm.shape, nPart, nSnap))
+
+	if b_field.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('b_field', b_field.shape, nPart, nSnap))
+
+	if dist_to_shock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('dist_to_shock', dist_to_shock.shape, nPart, nSnap))
+
+	if compression_ratio.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('compression_ratio', compression_ratio.shape, nPart, nSnap))
+
+	if b_field_ratio.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('b_field_ratio', b_field_ratio.shape, nPart, nSnap))
+
+	if eEnergyPerMass.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('eEnergyPerMass', eEnergyPerMass.shape, nPart, nSnap))
+
+	if V_pre_Shock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('V_pre_Shock', V_pre_Shock.shape, nPart, nSnap))
+
+
+
+	float_buffer = np.ndarray(nPart,dtype=float)
+	int_buffer = np.ndarray(nPart,dtype=int)
+
+	with open(fileName,'wb') as f:
+		dummy = nPart * (12 * size_f + size_i) + 8
+		f.write(struct.pack('i',dummy))
+
+		for s in np.arange(nSnap):
+			f.write(struct.pack('d', time[s]))
+			
+			float_buffer[:] = pos_x[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = pos_y[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = pos_z[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = rho[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = temp[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = Utherm[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = b_field[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			int_buffer[:] = eInjection[:, s]
+			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))
+
+			float_buffer[:] = eEnergyPerMass[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = dist_to_shock[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = compression_ratio[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = b_field_ratio[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = V_pre_Shock[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			f.write(struct.pack('i',dummy))
+			if s < nSnap - 1:
+				f.write(struct.pack('i',dummy))            
+
+		f.close()
+
+	return 0
+
+####################################################################################
+# Writes a binary file with the initial spectrum data
+
+def writeInitialSpectrumFile(fname, nPart, nBins, f):
+	size_i, size_f, size_d = checkNumberEncoding()
+
+	float_buffer = np.ndarray(nBins,dtype=float)
+
+	with open(fname,'wb') as file:
+
+		# first block with basic information
+		file.write(struct.pack('i',2 * size_i))
+		file.write(struct.pack('i',nPart))
+		file.write(struct.pack('i',nBins))
+		file.write(struct.pack('i',2 * size_i))
+
+		# second block with actual data
+		file.write(struct.pack('i', nPart * nBins * size_d))
+		for i in np.arange(nPart):
+			file.write(struct.pack('{:d}d'.format(nBins), *f[i]))
+
+		file.write(struct.pack('i',nPart * nBins * size_d))
+		file.close()
+
+	return 0
+
+####################################################################################
+# Reads a binary file with the initial spectrum data
+
+def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None):
+
+	size_i, size_f, size_d = checkNumberEncoding()
+	with open(fname,'rb') as file:
+		print "Read initial spectrum for tracer particles"
+
+		# Read first information block with number of particles and momentum bins
+		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		if dummy != 2 * size_i:
+			sys.exit("Block size is {:d}, but expected {:d}".format(dummy, 2 * size_i))
+
+		nPart = int(struct.unpack('i',file.read(size_i))[0])
+		if nPartIn != None :
+			if nPart != nPartIn:
+				sys.exit("nPart is {:d}, but expected {:d}".format(nPart, nPartIn))
+
+		nBins = int(struct.unpack('i',file.read(size_i))[0])
+		if nBinsIn != None:
+			if nBins != nBinsIn:
+				sys.exit("nBins is {:d}, but expected {:d}".format(nBins, nBinsIn))
+
+		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		if dummy != 2 * size_i:
+			sys.exit("1st data block not correctly enclosed")
+
+
+		f = np.ndarray((nPart, nBins), dtype=float)
+
+		# Read now the actual spectral data
+		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		if dummy != nPart * nBins * size_d:
+			sys.exit("Block size is {:d} dummy, but expected {:d}".format(dummy, nPart * nBins * size_d))
+
+		for i in np.arange(nPart):
+			f[i] = struct.unpack('{:d}d'.format(nBins), file.read(size_d * nBins))
+
+		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		if dummy != nPart * nBins * size_d:
+			sys.exit("1st data block not correctly enclosed")
+
+		file.close()
+
+	return f
