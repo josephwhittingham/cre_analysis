@@ -11,7 +11,7 @@ class CRelectronParameters:
 	# instance variables
 
 	modeList=['CN: A(n+1)F(n+1) = B(n) F(n)','CN: A(n+0.5)F(n+1) = B(n+0.5) F(n)','CN: A(n+1)F(n+1) = B(n+1) F(n)','Explicit: F(n+1) = B(n) F(n)', 'Donor-Cell','Lax-Wendroff','Beam-Warming','Fromm','SL Minmod','SL Superbee','SL MC','SL van Leer']
-	def __init__(self,ParameterFileName = None):
+	def __init__(self,ParameterFileName = None, RunID = None):
 		# need to set dummy values as these determine the types
 
 		# General Settings for I/O
@@ -74,7 +74,7 @@ class CRelectronParameters:
 		self.MinimumMomentumNumerics = 0.
 
 		if ParameterFileName is not None:
-			self.read_data(ParameterFileName)
+			self.read_data(ParameterFileName, RunID)
 
 	def __del__(self):
 		for var in vars(self):
@@ -90,7 +90,7 @@ class CRelectronParameters:
 				print '{:25} {:}'.format(var,getattr(self,var))
 	
 	# read in the parameter file and set the private class variables accordingly
-	def read_data(self,ParameterFileName):
+	def read_data(self,ParameterFileName, RunID = None):
 		fParam = open(ParameterFileName,'r')
 		print "Reading parameters from file '{:}'\n".format(ParameterFileName)
 		for line in fParam:
@@ -125,6 +125,8 @@ class CRelectronParameters:
 		lineParam = None
 		columnParam = None
 		fParam.close()
+		if(self.Run_ID == 0 and RunID != None):
+			self.Run_ID = RunID # Assign ID from given parameter if not defined in parameter file
 
 ######################################################################################
 # class which handles all the Snapshot which was also provided to the C program
