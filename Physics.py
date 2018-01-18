@@ -200,12 +200,12 @@ def SolutionSteadyStateProtonsAsymptotic(p, param, A_C, pStar):
 
 ############
 # calculate the spectral energy distribution function based on the cr density distribution function
-def SpectralEnergyDensity(p,f):
-	E_Dens = np.zeros(p.size)
-	for i in np.arange(p.size):
-		E_Dens[i] = f[i] * p[i] * (np.sqrt(1 + p[i]**2)-1)
+def SpectralEnergyLogDensity(p,f):
+	# Energy density in log space
+	return np.multiply(np.multiply(p, f), np.subtract(np.sqrt(np.add(1, np.square(p))), 1))
 
-	return E_Dens
+def SpectralEnergyDensity(p,f):
+	return np.multiply(f, np.subtract(np.sqrt(np.add(1, np.square(p))), 1))
 
 ############
 # calculate the spectral energy distribution function based on the cr density distribution function
