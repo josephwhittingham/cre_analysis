@@ -370,3 +370,13 @@ def CalculateMomentumGrid(MinimumMomentum, MaximumMomentum, NumberOfMomentumBins
 	p = np.array([MinimumMomentum * np.exp( del_p * i) for i in np.arange(NumberOfMomentumBins)])
 
 	return p
+
+def CalculateMomentumGridFromParamFile(param):
+	if param.IncludeMaximumMomentum:
+		del_p = (np.log(param.MaximumMomentum) - np.log(param.MinimumMomentum)) / (param.NumberOfMomentumBins - 1)
+	else:
+		del_p = (np.log(param.MaximumMomentum) - np.log(param.MinimumMomentum)) / (param.NumberOfMomentumBins)
+
+	p = np.array([param.MinimumMomentum * np.exp( del_p * i) for i in np.arange(param.NumberOfMomentumBins)])
+
+	return p
