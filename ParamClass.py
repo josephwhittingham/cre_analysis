@@ -10,20 +10,19 @@ import sys
 class CRelectronParameters:
 	# instance variables
 
-	modeList=['CN: A(n+1)F(n+1) = B(n) F(n)','CN: A(n+0.5)F(n+1) = B(n+0.5) F(n)','CN: A(n+1)F(n+1) = B(n+1) F(n)','Explicit: F(n+1) = B(n) F(n)', 'Donor-Cell','Lax-Wendroff','Beam-Warming','Fromm','SL Minmod','SL Superbee','SL MC','SL van Leer']
 	def __init__(self,ParameterFileName = None, RunID = None):
 		# need to set dummy values as these determine the types
 
 		# General Settings for I/O
-		self.InputDataFile               = ''  
-		self.Run_ID                      = 0  # obsolete
 		self.OutputDir                   = ''
+		self.InputDataFile               = ''  
 		self.SnapshotFileBase            = ''
 
 		# Settings for Discretization
 		self.NumberOfMomentumBins        = 0
 		self.CourantFac                  = 0.0
 		self.AlphaCoefficientMaximum     = 0.0
+		self.MaximumSubcycles_in_log2    = 0
 		self.MinimumMomentum             = 0.0
 		self.MaximumMomentum             = 0.0
 		self.TimeStepsUpdate             = 1
@@ -37,39 +36,37 @@ class CRelectronParameters:
 		self.InitialSpectrumFile         = ''
 		self.UseInitialSpectrumFile      = 0
 
-		# Flags
-		self.FlagLogGrid                 = 1 # obsolete
-		self.FlagAllowSubcycles          = 1
-		self.FlagSolverForAdvection      = 12 # obsolete
-		self.mode                        = '' # this is directly given by the parameter file, but depends on FlagSolverForAdvection
-		self.FlagProtons                 = 0 # obsolete
-		self.Flag3DFunction              = 0 # obsolete
+		# Output Settings
+		self.OutputEverySnapshotOn       = 0
+		self.TimeOfFirstSnapshot         = 0.0
+		self.TimeBetSnapshot             = 0.01
 
-		# Cooling
+		# Flags
+		self.FlagAllowSubcycles          = 1
 		self.FlagCooling                 = 1
+		self.Flag_Fermi_I_Reacceleration = 1
+		self.Flag_Fermi_I_injection      = 1
+		self.Flag_Fermi_II_Reacceleration= 1
+		self.FlagExternalInjection       = 0
+
+		# Cooling & Diffusion
 		self.n_elec                      = 1.157
 		self.HydrogenMassFrac            = 0.76
-
-		# Source Parameters (ALL obsolete)
-		self.FlagSourceFunction          = 0
-		self.SourceLowCutoff             = 0.0
-		self.SourceHighCutoff            = 0.0
-		self.SourceSpectralIndex         = 0.0
-		self.SourceNormalization         = 0.0
+		self.DiffusionTimeInGyr          = 0.
 
 		# parameters for shock injection
 		self.ShockParamA                 = 0.
 		self.ShockParamB                 = 0.
 		self.ShockParamC                 = 0.
 
-		# new parameters
+		# new parameters with tracer data
 		self.NumberOfTracerParticles     = 1
-		self.UseSemiAnalyticSolutionLow  = 0
-		self.UseSemiAnalyticSolutionHigh = 0
 		self.FunctionValueChop           = 1.e-30
 
-		# fixed boundary for numerics/semi analytic
-		self.FlagFixedNumericsBoundaries = 0
+		# Semi analytic treatement
+		self.UseSemiAnalyticSolutionLow  = 1
+		self.UseSemiAnalyticSolutionHigh = 1
+		self.FlagFixedNumericsBoundaries = 1
 		self.MaximumMomentumNumerics = 0.
 		self.MinimumMomentumNumerics = 0.
 
@@ -119,14 +116,11 @@ class CRelectronParameters:
 									continue
 		if self.OutputDir[-1] != '/':
 			self.OutputDir += '/'
-		self.mode = self.modeList[self.FlagSolverForAdvection - 1]
 		print '\n'
 		line = None
 		lineParam = None
 		columnParam = None
 		fParam.close()
-		if(self.Run_ID == 0 and RunID != None):
-			self.Run_ID = RunID # Assign ID from given parameter if not defined in parameter file
 
 ######################################################################################
 # class which handles all the Snapshot which was also provided to the C program
@@ -441,11 +435,22 @@ def SpectrumSnapshot(fname,  nBinsIn=None):
 	with open(fname,'rb') as file:
 		print "Reading snapshot data from file '{:}'".format(fname)
 
+		# Read the first block with id and time
+		dummy = int(struct.unpack('i', file.read(size_i))[0])
+		if dummy != size_i + size_d:
+			sys.exit("First block size is {:d} bytes, but expexted {:d}".format(dummy, size_i + size_d))
+		
+		id = int(struct.unpack('i', file.read(size_i))[0])
+		time = float(struct.unpack('d', file.read(size_d))[0])
+
+		file.seek(size_i, 1)
+
+
 		# Read first information block with number of particles and momentum bins
-		dummy = int(struct.unpack('i',file.read(size_i))[0])
+		dummy = int(struct.unpack('i', file.read(size_i))[0])
 		if nBinsIn != None:
 			if dummy != nBinsIn * size_d:
-				sys.exit("Block size is {:d} dummy, but expected {:d}".format(dummy, nBins * size_d))
+				sys.exit("Block size is {:d} bytes, but expected {:d}".format(dummy, nBins * size_d))
 
 		nBins = dummy / size_d
 	
@@ -457,7 +462,7 @@ def SpectrumSnapshot(fname,  nBinsIn=None):
 
 		file.close()
 
-	return f
+	return f, id, time
 
 
 
