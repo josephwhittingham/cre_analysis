@@ -12,6 +12,7 @@ class CRelectronParameters:
 
 	def __init__(self,ParameterFileName = None, RunID = None):
 		# need to set dummy values as these determine the types
+		self.Run_ID                      = 0
 
 		# General Settings for I/O
 		self.OutputDir                   = ''
@@ -117,6 +118,8 @@ class CRelectronParameters:
 		if self.OutputDir[-1] != '/':
 			self.OutputDir += '/'
 		print '\n'
+		if RunID != None:
+			self.Run_ID = RunID
 		line = None
 		lineParam = None
 		columnParam = None
