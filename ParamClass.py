@@ -432,21 +432,26 @@ class DistributionFunction:
 
 ######################################################################################
 # Read the distribution function
-def SpectrumSnapshot(fname,  nBinsIn=None):
+def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 
 	size_i, size_f, size_d = checkNumberEncoding()
 	with open(fname,'rb') as file:
 		print "Reading snapshot data from file '{:}'".format(fname)
 
 		# Read the first block with id and time
-		dummy = int(struct.unpack('i', file.read(size_i))[0])
-		if dummy != size_i + size_d:
-			sys.exit("First block size is {:d} bytes, but expexted {:d}".format(dummy, size_i + size_d))
-		
-		id = int(struct.unpack('i', file.read(size_i))[0])
-		time = float(struct.unpack('d', file.read(size_d))[0])
+		if not(NoIdTimeHeader):
+			dummy = int(struct.unpack('i', file.read(size_i))[0])
+			if dummy != size_i + size_d:
+				sys.exit("First block size is {:d} bytes, but expexted {:d}".format(dummy, size_i + size_d))
 
-		file.seek(size_i, 1)
+			id = int(struct.unpack('i', file.read(size_i))[0])
+			time = float(struct.unpack('d', file.read(size_d))[0])
+
+			file.seek(size_i, 1)
+		else:
+			id = -1
+			time = -1.
+				
 
 
 		# Read first information block with number of particles and momentum bins
