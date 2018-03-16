@@ -41,6 +41,7 @@ class CRelectronParameters:
 		self.OutputEverySnapshotOn       = 0
 		self.TimeOfFirstSnapshot         = 0.0
 		self.TimeBetSnapshot             = 0.01
+		self.CosmologicalIntegrationOn   = 0
 
 		# Flags
 		self.FlagAllowSubcycles          = 1
@@ -519,11 +520,132 @@ class OtherSolution:
 		
 class TracerOutput:
 	# instance variables
+	def __init__(self, fname = None):
+		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
+		# need to set dummy values as these determine the types
+		checkNumberEncoding()
+		self.nSnap = 0
+		self.nPart = 0
+		if fname is not None:
+			self.read_data(fname)
+
+	def __del__(self):
+		for var in vars(self):
+			setattr(self,var,None)
+
+	def read_data(self, fname):
+		with open(fname,'rb') as f:
+			print "Read Arepo's tracer output from file '{}'".format(fname)
+			size_i = struct.calcsize('i')
+			size_f = struct.calcsize('f')
+			size_d = struct.calcsize('d')
+
+			dummy = int(struct.unpack('i',f.read(size_i))[0])
+			self.nPart = dummy / (3 * size_i + 18 * size_f + 1 * size_d)
+			self.nSnap	= 0
+			buf 	= 1
+
+			while(buf):
+				# move pointer forward
+				f.seek(self.nPart * (3 * size_i + 18 * size_f + 1 * size_d), 1) 
+
+				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
+					sys.exit("data not correctly enclosed 1, ")
+
+				self.nSnap += 1
+				buf = f.read(size_i)
+
+			# go back to the beginning of the file
+			f.seek(size_i, 0)
+			buf = 0
+			print 'Number of particles: {:d}'.format(self.nPart)
+			print 'Number of snapshots: {:d}'.format(self.nSnap)
+
+			# create the arrays
+			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=int)
+			self.time           = np.ndarray((self.nPart, self.nSnap), dtype = float) # time or scale parameter
+
+			self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.z	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.n_gas	        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.temp	        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.u_therm        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+
+			# parameters for cooling
+			self.B			    = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.u_photon       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+
+			# parameters for diffusive shock acceleration
+			self.ShockFlag      = np.ndarray((self.nPart, self.nSnap), dtype=int)
+			self.RhopreShock    = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.RhopostShock   = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.BpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.BpostShock     = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.VpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.timeShockCross = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.cosTheta       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			
+			# parameters for electron injection (apart from DSA given above)
+			self.CReInjection   = np.ndarray((self.nPart, self.nSnap), dtype=int)
+			self.injRate        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.alphaInj       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.pInj           = np.ndarray((self.nPart, self.nSnap), dtype=float)
+
+			# read the data
+			for n in np.arange(self.nSnap):
+				self.ID[:, n]             = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+				self.time[:, n]		      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
+				self.x[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.y[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.z[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.n_gas[:, n]		  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.temp[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.u_therm[:, n]	      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+				self.B[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.u_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+				self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+				self.RhopreShock[:, n]    = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.RhopostShock[:, n]   = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.BpreShock[:, n]      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.BpostShock[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.VpreShock[:, n]      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+				self.CReInjection[:, n]   = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+				self.injRate[:, n]        = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.alphaInj[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.pInj[:, n]           = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+
+				if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
+					sys.exit("data not correctly enclosed, ")
+
+				f.seek(size_i, 1)
+
+			f.close()
+
+			print "Data was successfully read"
+
+
+
+######################################################################################
+# Class to read the tracer output data
+# takes the binary output file of arepo to extract data
+# gets directly number of snapshots
+# needs packages: struct
+		
+class TracerOutputOld:
+	# instance variables
 	def __init__(self, fname = None, with_cr_electrons=1):
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
 		checkNumberEncoding()
-		self.nSnap = 99
+		self.nSnap = 0
 		self.nPart = 0
 		if fname is not None:
 			self.read_data(fname,with_cr_electrons)
@@ -653,100 +775,154 @@ def checkNumberEncoding():
 ####################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
-def writeTracerArepo(fileName, nSnap, nPart, time, pos_x, pos_y, pos_z, rho, temp, Utherm, b_field, eInjection, dist_to_shock, compression_ratio, b_field_ratio, eEnergyPerMass, V_pre_Shock):
+def writeTracerArepo(fileName, nSnap, nPart, ID, time, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, RhopreShock, RhopostShock, BpreShock, BpostShock, VpreShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
 	
 	size_i, size_f, size_d = checkNumberEncoding()
 
 	# do some consistency checks
-	if time.shape != (nSnap,):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d},)".format('time',time.shape, nSnap))
+	if ID.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('ID', ID.shape, nPart, nSnap))
 
-	if pos_x.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pos_x', pos_x.shape, nPart, nSnap))
+	if time.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('time', time.shape, nPart, nSnap))
 
-	if pos_y.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pos_y', pos_y.shape, nPart, nSnap))
+	if x.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('x', pos_x.shape, nPart, nSnap))
 
-	if pos_z.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pos_z', pos_z.shape, nPart, nSnap))
+	if y.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('y', y.shape, nPart, nSnap))
 
-	if rho.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('rho', rho.shape, nPart, nSnap))
+	if z.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('z', z.shape, nPart, nSnap))
+
+	if n_gas.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('n_gas', n_gas.shape, nPart, nSnap))
 
 	if temp.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('temp', temp.shape, nPart, nSnap))
 
-	if Utherm.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('Utherm', Utherm.shape, nPart, nSnap))
+	if u_therm.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('u_therm', u_therm.shape, nPart, nSnap))
 
-	if b_field.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('b_field', b_field.shape, nPart, nSnap))
+	if B.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('B', B.shape, nPart, nSnap))
 
-	if dist_to_shock.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('dist_to_shock', dist_to_shock.shape, nPart, nSnap))
+	if u_photon.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('u_photon', u_photon.shape, nPart, nSnap))
 
-	if compression_ratio.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('compression_ratio', compression_ratio.shape, nPart, nSnap))
+	if ShockFlag.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('ShockFlag', ShockFlag.shape, nPart, nSnap))
 
-	if b_field_ratio.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('b_field_ratio', b_field_ratio.shape, nPart, nSnap))
+	if RhopreShock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('RhopreShock', RhopreShock.shape, nPart, nSnap))
 
-	if eEnergyPerMass.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('eEnergyPerMass', eEnergyPerMass.shape, nPart, nSnap))
+	if RhopostShock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('RhopostShock', RhopostShock.shape, nPart, nSnap))
 
-	if V_pre_Shock.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('V_pre_Shock', V_pre_Shock.shape, nPart, nSnap))
+	if BpreShock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('BpreShock', BpreShock.shape, nPart, nSnap))
 
+	if BpostShock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('BpostShock', BpostShock.shape, nPart, nSnap))
 
+	if VpreShock.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('VpreShock', VpreShock.shape, nPart, nSnap))
+
+	if timeShockCross.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('timeShockCross', timeShockCross.shape, nPart, nSnap))
+
+	if cosTheta.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('cosTheta', cosTheta.shape, nPart, nSnap))
+
+	if CReInjection.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('CReInjection', CReInjection.shape, nPart, nSnap))
+
+	if injRate.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('injRate', injRate.shape, nPart, nSnap))
+
+	if alphaInj.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('alphaInj', alphaInj.shape, nPart, nSnap))
+
+	if pInj.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pInj', pInj.shape, nPart, nSnap))
 
 	float_buffer = np.ndarray(nPart,dtype=float)
 	int_buffer = np.ndarray(nPart,dtype=int)
 
 	with open(fileName,'wb') as f:
-		dummy = nPart * (12 * size_f + size_i) + 8
+		dummy = nPart * (3 * size_i + 18 * size_f + 1 * size_d)
 		f.write(struct.pack('i',dummy))
 
 		for s in np.arange(nSnap):
-			f.write(struct.pack('d', time[s]))
+			int_buffer[:] = ID[:, s]
+			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))			
+
+			float_buffer[:] = time[:, s]
+			f.write(struct.pack('{:d}d'.format(nPart), *float_buffer))
 			
-			float_buffer[:] = pos_x[:, s]
+			float_buffer[:] = x[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = pos_y[:, s]
+			float_buffer[:] = y[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = pos_z[:, s]
+			float_buffer[:] = z[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = rho[:, s]
+			float_buffer[:] = n_gas[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
 			float_buffer[:] = temp[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = Utherm[:, s]
+			float_buffer[:] = u_therm[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = b_field[:, s]
+			# parameters for cooling
+			float_buffer[:] = B[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			int_buffer[:] = eInjection[:, s]
+			float_buffer[:] = u_photon[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			# parameters for diffusive shock acceleration
+			int_buffer[:] = ShockFlag[:, s]
 			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))
 
-			float_buffer[:] = eEnergyPerMass[:, s]
+			float_buffer[:] = RhopreShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = dist_to_shock[:, s]
+			float_buffer[:] = RhopostShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = compression_ratio[:, s]
+			float_buffer[:] = BpreShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = b_field_ratio[:, s]
+			float_buffer[:] = BpostShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = V_pre_Shock[:, s]
+			float_buffer[:] = VpreShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = timeShockCross[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = cosTheta[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			# parameters for electron injection (apart from DSA given above)
+			int_buffer[:] = CReInjection[:, s]
+			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))
+
+			float_buffer[:] = injRate[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = alphaInj[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
+			float_buffer[:] = pInj[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
 
 			f.write(struct.pack('i',dummy))
 			if s < nSnap - 1:
