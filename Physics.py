@@ -33,33 +33,28 @@ def coulomb_loss_rate(p, n_e ):
 def ic_sync_loss_rate(p, u_photon, magnetic_field, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * ( (np.power(1+redshift_z,4) + (magnetic_field / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + u_photon) 
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( (np.power(1+redshift_z,4) + (magnetic_field / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + u_photon) 
 
 def ic_loss_rate(p, u_photon, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * ( np.power(1+redshift_z,4) * CMB_ENERGY_DENSITY + u_photon) 
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( np.power(1+redshift_z,4) * CMB_ENERGY_DENSITY + u_photon) 
 
 def sync_loss_rate(p, magnetic_field):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * p**2 / beta_factor(p) * (magnetic_field / CMB_MAGNETIC_FIELD )**2  * CMB_ENERGY_DENSITY
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * (magnetic_field / CMB_MAGNETIC_FIELD )**2  * CMB_ENERGY_DENSITY
 
 
 def gamma_factor(p):
 	# calculates the relativistic gamma factor
-	if type(p)==np.ndarray or type(p)==list:
-		return np.array([np.sqrt(1. + pp**2) for pp in p ])
-	else:
-		return np.sqrt(1. + p**2)
+	return np.sqrt( np.add(1., np.square(p)))
+
+		
 
 def beta_factor(p):
-	if type(p)==np.ndarray or type(p)==list:
-		return np.array([(pp / np.sqrt( 1. + pp**2 )) for pp in p ])
-	else:
-		return (p / np.sqrt( 1. + p**2 ))
-
-	return 
+	# calculates the relativistic beta factor
+	return np.divide(p, np.sqrt(np.add(1., np.square(p))))
 
 def electron_density(rho, x_e, HydrogenMassFrac):
 	# calculates the electron density $n_e = \rho / m_p  X_H x_e$
@@ -128,19 +123,27 @@ def bremsstrahlung_loss_rate(p, n_gas):
 
 
 ######################################################################################
-def SolutionSteadyStateElectrons(p, param, ne, u_photon, B, z):
-	# p         Momenta
-	# param     instance of CRelectronParameters class
-	# ne        electron density        
-	# B        magnetic field (G)
-	# z        redshift
+def SolutionSteadyStateElectrons(p, param, part, tp_id, snap):
+	# Calculates the steady state spectrum of a tracer particle at given snapshot
+	#
+	# p       Momenta
+	# param   instance of parameter class
+	# part    instance of arepo tracer output class
+	# tp_id   ID of tracer particle
+	# snap    number of snapshot
+
 	fA = np.zeros(p.size)
 
-	for i in np.arange(p.size):
-		if p[i] >= param.SourceLowCutoff:
-			fA[i] = param.SourceNormalization * pow(p[i],1-param.SourceSpectralIndex) / abs(coulomb_loss_rate(p[i],ne) + ic_sync_loss_rate(p[i], u_photon, B, z)) / (param.SourceSpectralIndex - 1)
-		else:
-			fA[i] = param.SourceNormalization * pow(param.SourceLowCutoff,1-param.SourceSpectralIndex) / abs(coulomb_loss_rate(p[i],ne) + ic_sync_loss_rate(p[i], u_photon, B, z)) / (param.SourceSpectralIndex - 1)
+	ne = electron_density(part.n_gas[tp_id, snap], param.n_elec, param.HydrogenMassFrac)
+	if param.CosmologicalIntegrationOn == 0:
+		z = 0.
+	else:
+		z = np.power(part.time[tp_id, snap], -1) - 1.
+
+	iInj = np.where(p >= part.pInj[tp_id, snap])[0][0]
+
+	fA[ : iInj] = np.divide(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.) * np.power(part.pInj[tp_id, snap], 1. - part.alphaInj[tp_id, snap]), np.abs(np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.u_photon[tp_id, snap], part.B[tp_id, snap], z))[ : iInj])) 
+	fA[iInj : ] = np.multiply(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.), np.divide( np.power(p, 1. - part.alphaInj[tp_id, snap]),  np.abs(np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.u_photon[tp_id, snap], part.B[tp_id, snap], z))))[iInj : ] )
 	
 	return fA
 
@@ -168,6 +171,11 @@ def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne,
 	fA = cInj / ((alphaInj - 1.) * (coulomb_loss_rate(p, ne) + bremsstrahlung_loss_rate(p, n_gas) + ic_sync_loss_rate(p, u_photon, B, z))) * np.power(p, - alphaInj + 1) * np.power((1. + param.ShockParamA * np.power(p/pCut, param.ShockParamB)), param.ShockParamC) * np.exp( - np.square( p / pCut))
 	
 	return fA
+
+
+######################################################################################
+
+
 
 
 ######################################################################################
