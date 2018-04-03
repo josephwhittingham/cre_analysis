@@ -631,6 +631,47 @@ class TracerOutput:
 
 			print "Data was successfully read"
 
+	# def __getitem__(self, key):
+	# 	if isinstance(key, int):
+	# 		return self.getitem(key)
+	# 	elif isinstance(key, slice):
+	# 		return self.getslice(key)
+	# 	else:
+	# 		raise TypeError('Index must be int, not {}'.format(type(key).__name__))
+
+	# def getitem(self, key):
+	# 	if key < self.nPart:
+	# 		self.nPart = 1
+	# 		self.nSnap = self.nSnap
+
+	# 		self.ID[0, :]             = self.ID[key, :]
+	# 		self.time[0, :]		      = self.time[key, :]
+
+	# 		self.x[0, :]		      = self.x[key, :] 
+	# 		self.y[0, :]		      = self.y[key, :] 
+	# 		self.z[0, :]		      = self.z[key, :] 
+	# 		self.n_gas[0, :]		  = self.n_gas[key, :] 
+	# 		self.temp[0, :]		      = self.temp[key, :] 
+	# 		self.u_therm[0, :]	      = self.u_therm[key, :] 
+
+	# 		self.B[0, :]		      = self.B[key, :] 
+	# 		self.u_photon[0, :]       = self.u_photon[key, :] 
+
+	# 		self.ShockFlag[0, :]      = self.ShockFlag[key, :] 
+	# 		self.RhopreShock[0, :]    = self.RhopreShock[key, :] 
+	# 		self.RhopostShock[0, :]   = self.RhopostShock[key, :] 
+	# 		self.BpreShock[0, :]      = self.BpreShock[key, :] 
+	# 		self.BpostShock[0, :]     = self.BpostShock[key, :] 
+	# 		self.VpreShock[0, :]      = self.VpreShock[key, :] 
+	# 		self.timeShockCross[0, :] = self.timeShockCross[key, :] 
+	# 		self.cosTheta[0, :]       = self.cosTheta[key, :] 
+
+	# 		self.CReInjection[0, :]   = self.CReInjection[key, :] 
+	# 		self.injRate[0, :]        = self.injRate[key, :] 
+	# 		self.alphaInj[0, :]       = self.alphaInj[key, :] 
+	# 		self.pInj[0, :]           = self.pInj[key, :] 
+		
+
 
 
 ######################################################################################
