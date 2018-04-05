@@ -15,6 +15,10 @@ CMB_MAGNETIC_FIELD        = 3.24e-6         # (Gauss)
 CMB_ENERGY_DENSITY        = 4.165659e-13        # (ergs / cm^3)
 ALPHA_FINESTRUCTURE       = 0.0072973526    # CODATA 2014
 
+# Standard Parameters
+N_ELEC             = 1.157
+HYDROGEN_MASS_FRAC = 0.76
+
 # physical functions
 def plasma_frequency(n_e):
 	# calculate the plasma frequency $ \omega = \sqrt{ 4 \pi n_e e^2 / m_e }$
@@ -388,3 +392,41 @@ def CalculateMomentumGridFromParamFile(param):
 	p = np.array([param.MinimumMomentum * np.exp( del_p * i) for i in np.arange(param.NumberOfMomentumBins)])
 
 	return p
+
+
+
+####################################################################################################
+# Definitions for Fermi I process
+
+def pIf(p, pMinCool):
+	a = np.power(p,3)/(3. + np.power(p,2)) + pMinCool
+	return 1/3. * (np.multiply(np.power(a,2), np.power(np.power(a,3) + 4.5 * np.sqrt(4 * np.power(a,4) + 81 * np.power(a,2)) + 40.5 * a,-1/3.)) + np.power(np.power(a,3) + 4.5 * np.sqrt(4 * np.power(a,4) + 81 * np.power(a,2)) + 40.5 * a,1/3.) + a)
+
+def cooled_power_law(p, C, alpha, del_t, n_gas):
+	n_elec = 1.157
+	HydrogenMassFrac = 0.76
+
+	# Scaling relations
+	u_star_cmb_ratio = 1.e+4 * np.power(n_gas, 2./3.)
+	u_photon = u_star_cmb_ratio * CMB_ENERGY_DENSITY
+	B = 1.e-04 * np.power(n_gas, 2./3.)
+	ne = electron_density(n_gas,n_elec,HydrogenMassFrac)
+
+	pMaxCool = 3. * ELECTRONMASS * CLIGHT / ( 4. * THOMPSON * (CMB_ENERGY_DENSITY * (pow(1+0,4) + np.square(B / CMB_MAGNETIC_FIELD)) + u_photon ) * del_t) ;
+	pMinCool = coulomb_loss_rate(15., ne) * del_t
+
+
+	return np.piecewise(p, [pIf(p, pMinCool)<pMaxCool, pIf(p, pMinCool)>=pMaxCool], [lambda p: np.multiply(np.multiply(C, np.multiply(np.power(np.multiply(pIf(p, pMinCool), np.power(np.add(1.,np.multiply(pIf(p, pMinCool),-1./pMaxCool)),-1)), -alpha), np.multiply(np.add(1.,np.power(pIf(p, pMinCool),-2)), np.power(np.add(1., np.power(p,-2)), -1)))), np.power(np.add(np.multiply(pIf(p, pMinCool),1/pMaxCool),-1),-2)), 0.])
+
+def relic_reacceleration(p, f, alpha):
+	return np.multiply((alpha + 2.), np.multiply(np.power(p, -alpha), np.array([simps(np.multiply(f, np.power(p, alpha - 1)) * np.heaviside(pp - p, 0), p) for pp in p])))
+
+def direct_injection(p, ne, T, alpha, x_inj=3.5):
+	Eratio = ELECTRONMASS * CLIGHT**2 / ( 2. * BOLTZMANN * T)
+	p_inj = x_inj * np.power(Eratio, -0.5)
+	C = 4*ne*np.power(Eratio,1.5)/np.sqrt(np.pi) * np.exp( -Eratio * p_inj**2 ) * np.power(p_inj, alpha + 2.)
+	return np.piecewise(p, [p<=p_inj, p>p_inj], [0., lambda p: np.multiply(C, np.power(p, -alpha))]), C
+	
+def MaxwellBoltzmann(p, ne, T):
+	Eratio = ELECTRONMASS * CLIGHT**2 / ( 2. * BOLTZMANN * T)
+	return np.multiply(4*ne*np.power(Eratio,1.5)/np.sqrt(np.pi),np.multiply(np.square(p), np.exp( np.multiply(-Eratio,np.square(p)))))	

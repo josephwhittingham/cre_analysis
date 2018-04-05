@@ -4,7 +4,7 @@ import struct
 import sys
 
 
-######################################################################################
+####################################################################################################
 # class which handles the parameters given via files to the C program
 # parameters are needed for calculating the plots
 class CRelectronParameters:
@@ -126,7 +126,7 @@ class CRelectronParameters:
 		columnParam = None
 		fParam.close()
 
-######################################################################################
+####################################################################################################
 # class which handles all the Snapshot which was also provided to the C program
 # by setting the variable 'InputDataFile'.
 # Parameters can be read out by giving the name of this file
@@ -204,7 +204,7 @@ class SnapshotData:
 			print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[i], self.n_gas[i],self.B[i])
 		print ''
 
-######################################################################################
+####################################################################################################
 # class which handles all the Snapshot which was also provided to the C program
 # by setting the variable 'InputDataFile'.
 # Parameters can be read out by giving the name of this file
@@ -281,7 +281,7 @@ if __name__ == "__main__":
 
 
 
-######################################################################################
+####################################################################################################
 # Simple Class to Read Error File
 class runErrorRelative:
 	nPointsMax = 30
@@ -322,7 +322,7 @@ class runErrorRelative:
 		columnData = None
 		fData.close()
 
-######################################################################################
+####################################################################################################
 # Simple Class to Read Error for CR properties
 class PropertyError:
 	nPointsMax = 30
@@ -366,7 +366,7 @@ class PropertyError:
 		columnData = None
 		fData.close()
 
-######################################################################################
+####################################################################################################
 # Simple Class to Read Approximate Solution for Protons
 class ApproxData:
 	nSnapsMax = 50
@@ -406,7 +406,7 @@ class ApproxData:
 		columnData = None
 		fData.close()
 
-######################################################################################
+####################################################################################################
 # Simple Class for the distribution function
 # takes the snapshot file to fill the data
 class DistributionFunction:
@@ -431,7 +431,7 @@ class DistributionFunction:
 		fSnap.close()
 
 
-######################################################################################
+####################################################################################################
 # Read the distribution function
 def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 
@@ -475,7 +475,7 @@ def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 
 
 
-######################################################################################
+####################################################################################################
 ## gives two numbers for representing a float in scientific notation
 ## 23. will return [2.3,1]
 def exp_rep(f):
@@ -488,7 +488,7 @@ def exp_rep(f):
 	return [f_coeff, f_exp]
 
 
-######################################################################################
+####################################################################################################
 # Simple Class for the distribution function
 # takes the snapshot file to fill the data
 class OtherSolution:
@@ -512,7 +512,7 @@ class OtherSolution:
 		i = None
 		fData.close()
 
-######################################################################################
+####################################################################################################
 # Class to read the tracer output data
 # takes the binary output file of arepo to extract data
 # gets directly number of snapshots
@@ -606,7 +606,6 @@ class TracerOutput:
 
 				self.B[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.u_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-
 				self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
 				self.RhopreShock[:, n]    = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.RhopostShock[:, n]   = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
@@ -674,7 +673,7 @@ class TracerOutput:
 
 
 
-######################################################################################
+####################################################################################################
 # Class to read the tracer output data
 # takes the binary output file of arepo to extract data
 # gets directly number of snapshots
@@ -781,7 +780,7 @@ class TracerOutputOld:
 	
 
 
-####################################################################################
+####################################################################################################
 # Function to check whether system encoding of int, float and double is correct
 # returns the sizes of int, float and double if everything is alright
 def checkNumberEncoding():
@@ -813,7 +812,7 @@ def checkNumberEncoding():
 	else:
 		return size_i, size_f, size_d
 
-####################################################################################
+####################################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
 def writeTracerArepo(fileName, nSnap, nPart, ID, time, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, RhopreShock, RhopostShock, BpreShock, BpostShock, VpreShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
@@ -973,7 +972,7 @@ def writeTracerArepo(fileName, nSnap, nPart, ID, time, x, y, z, n_gas, temp, u_t
 
 	return 0
 
-####################################################################################
+####################################################################################################
 # Writes a binary file with the initial spectrum data
 
 def writeInitialSpectrumFile(fname, nPart, nBins, f):
@@ -999,7 +998,7 @@ def writeInitialSpectrumFile(fname, nPart, nBins, f):
 
 	return 0
 
-####################################################################################
+####################################################################################################
 # Reads a binary file with the initial spectrum data
 
 def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None):
