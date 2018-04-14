@@ -1,19 +1,21 @@
 import numpy as np
 from scipy.integrate import simps, quad
 
-THOMPSON                = 6.65245873e-25
-ELECTRONMASS            = 9.1093829e-28
-CLIGHT                    = 2.99792458e10
-PLANCK                    = 6.6260695e-27
-ELECTRONCHARGE            = 4.8032042e-10
-PROTONMASS                = 1.67262178e-24
-YEARS_IN_SECONDS         = 3.1536e7
-ELECTRONVOLT_IN_ERGS    = 1.60217656e-12
-BARN_IN_CM2                = 1.E-24
-BOLTZMANN               = 1.38065e-16
-CMB_MAGNETIC_FIELD        = 3.24e-6         # (Gauss)
-CMB_ENERGY_DENSITY        = 4.165659e-13        # (ergs / cm^3)
-ALPHA_FINESTRUCTURE       = 0.0072973526    # CODATA 2014
+THOMPSON             = 6.65245873e-25
+ELECTRONMASS         = 9.1093829e-28
+CLIGHT               = 2.99792458e10
+PLANCK               = 6.6260695e-27
+ELECTRONCHARGE       = 4.8032042e-10
+PROTONMASS           = 1.67262178e-24
+YEARS_IN_SECONDS     = 3.1536e7
+ELECTRONVOLT_IN_ERGS = 1.60217656e-12
+BARN_IN_CM2          = 1.E-24
+BOLTZMANN            = 1.38065e-16
+CMB_MAGNETIC_FIELD   = 3.24e-6         # (Gauss)
+CMB_ENERGY_DENSITY   = 4.165659e-13    # (ergs / cm^3)
+ALPHA_FINESTRUCTURE  = 0.0072973526    # CODATA 2014
+PARSEC               = 3.085678e18
+SOLAR_MASS           = 1.989e33
 
 # Standard Parameters
 N_ELEC             = 1.157
