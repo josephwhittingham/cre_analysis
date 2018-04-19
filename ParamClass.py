@@ -440,7 +440,7 @@ class DistributionFunction:
 # Read the distribution function
 def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 
-	size_i, size_f, size_d = checkNumberEncoding()
+	size_i, size_I, size_f, size_d = checkNumberEncoding()
 	with open(fname,'rb') as file:
 		print "Reading snapshot data from file '{:}'".format(fname)
 
@@ -528,7 +528,6 @@ class TracerOutput:
 	def __init__(self, fname = None, cgs_units = False):
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
-		checkNumberEncoding()
 		self.nSnap = 0
 		self.nPart = 0
 		self.All_Units_in_cgs = False
@@ -547,9 +546,7 @@ class TracerOutput:
 	def read_data(self, fname, cgs_units = False, param = None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
 		with open(fname,'rb') as f:
 			print "Read Arepo's tracer output from file '{}'".format(fname)
-			size_i = struct.calcsize('i')
-			size_f = struct.calcsize('f')
-			size_d = struct.calcsize('d')
+			size_i, size_I, size_f, size_d = checkNumberEncoding()
 
 			# Reading first block with unit system
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
@@ -566,13 +563,13 @@ class TracerOutput:
 			
 			# Reading block with data values
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
-			self.nPart = dummy / (3 * size_i + 18 * size_f + 1 * size_d)
+			self.nPart = dummy / (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
 			self.nSnap	= 0
 			buf 	= 1
 
 			while(buf):
 				# move pointer forward
-				f.seek(self.nPart * (3 * size_i + 18 * size_f + 1 * size_d), 1) 
+				f.seek(self.nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d), 1) 
 
 				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
 					sys.exit("data not correctly enclosed 1, ")
@@ -587,8 +584,9 @@ class TracerOutput:
 			print 'Number of snapshots: {:d}'.format(self.nSnap)
 
 			# create the arrays
-			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=int)
-			self.time           = np.ndarray((self.nPart, self.nSnap), dtype = float) # time or scale parameter
+			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
+			self.time           = np.ndarray((self.nPart, self.nSnap), dtype=float) # time or scale parameter
+			self.ParentCellID   = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
 
 			self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -619,9 +617,9 @@ class TracerOutput:
 
 			# read the data
 			for n in np.arange(self.nSnap):
-				self.ID[:, n]             = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+				self.ID[:, n]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				self.time[:, n]		      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-
+				self.ParentCellID[:, n]   = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				self.x[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.y[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.z[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
@@ -715,6 +713,7 @@ class TracerOutput:
 		# create the arrays
 		ret.ID             = self.ID.__getitem__(key)
 		ret.time           = self.time.__getitem__(key)
+		ret.ParentCellID   = self.ParentCellID.__getitem__(key)
 
 		ret.x	            = self.x.__getitem__(key)
 		ret.y	            = self.y.__getitem__(key)
@@ -1082,10 +1081,8 @@ class TracerOutputOld:
 	def read_data(self, fname,with_cr_electrons=1):
 		with open(fname,'rb') as f:
 			print "Read Arepo's tracer output from file '{}'".format(fname)
-			size_i = struct.calcsize('i')
-			size_f = struct.calcsize('f')
-			size_d = struct.calcsize('d')
-
+			size_i, size_I, size_f, size_d = checkNumberEncoding()
+		
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
 			if with_cr_electrons == 1:
 				self.nPart = (dummy - size_d) / (12 * size_f + size_i)
@@ -1169,40 +1166,47 @@ class TracerOutputOld:
 # Function to check whether system encoding of int, float and double is correct
 # returns the sizes of int, float and double if everything is alright
 def checkNumberEncoding():
-	error = [0,0,0]
+	error = [0, 0, 0, 0]
 
 	# check integers
 	size_i = struct.calcsize('i')
 	if size_i != 4:
 		error[0] = 1
 
+	# check integers
+	size_I = struct.calcsize('I')
+	if size_i != 4:
+		error[1] = 1
+
 	# check single precision floats
 	size_f = struct.calcsize('f')
 	if size_f !=4:
-		error[1] = 1
+		error[2] = 1
 
 	# check double precision floats
 	size_d = struct.calcsize('d')
 	if size_d !=8:
-		error[2] = 1
+		error[3] = 1
 
 	if sum(error) > 0 :
-		sys.exit("Data types ({}{}{}{}{}) not correctly encoded on this machine!".format(
+		sys.exit("Data types ({}{}{}{}{}{}{}) not correctly encoded on this machine!".format(
 			["", "int"][error[0]==1],
-			["", ", "][error[0]==1 and error[1]==1],
-			["", "float"][error[1]==1],
-			["", ", "][(error[0] == 1 and error[2]==1) or (error[1] == 1 and error[2] == 1)],
-			["", "double"][error[2]==1]))
+			["", ", "][error[0]==1 and (error[1]==1 or (error[2]==1 or error[3]==1))],
+			["", "unsigned int"][error[1]==1],
+			["", ", "][error[1]==1 and (error[2]==1 or error[3]==1)],
+			["", "float"][error[2]==1],
+			["", ", "][error[2] == 1 and error[3] == 1],
+			["", "double"][error[3]==1]))
 
 	else:
-		return size_i, size_f, size_d
+		return size_i, size_I, size_f, size_d
 
 ####################################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
-def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
+def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
 	
-	size_i, size_f, size_d = checkNumberEncoding()
+	size_i, size_I, size_f, size_d = checkNumberEncoding()
 
 	# do some consistency checks
 	if ID.shape != (nPart, nSnap):
@@ -1210,6 +1214,9 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 
 	if time.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('time', time.shape, nPart, nSnap))
+
+	if ParentCellID.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('ParentCellID', ParentCellID.shape, nPart, nSnap))
 
 	if x.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('x', pos_x.shape, nPart, nSnap))
@@ -1272,7 +1279,8 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('pInj', pInj.shape, nPart, nSnap))
 
 	float_buffer = np.ndarray(nPart,dtype=float)
-	int_buffer = np.ndarray(nPart,dtype=int)
+	int_buffer   = np.ndarray(nPart,dtype=int)
+	uint_buffer  = np.ndarray(nPart,dtype=uint32)
 
 	with open(fileName,'wb') as f:
 		dummy = 3 * size_d
@@ -1283,15 +1291,18 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 		f.write(struct.pack('i',dummy))
 
 
-		dummy = nPart * (3 * size_i + 18 * size_f + 1 * size_d)
+		dummy = nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
 		f.write(struct.pack('i',dummy))
 
 		for s in np.arange(nSnap):
-			int_buffer[:] = ID[:, s]
-			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))			
+			uint_buffer[:] = ID[:, s]
+			f.write(struct.pack('{:d}I'.format(nPart), *uint_buffer))			
 
 			float_buffer[:] = time[:, s]
 			f.write(struct.pack('{:d}d'.format(nPart), *float_buffer))
+
+			uint_buffer[:] = ParentCellID[:, s]
+			f.write(struct.pack('{:d}I'.format(nPart), *uint_buffer))			
 			
 			float_buffer[:] = x[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
@@ -1369,7 +1380,7 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 # Writes a binary file with the initial spectrum data
 
 def writeInitialSpectrumFile(fname, nPart, nBins, f):
-	size_i, size_f, size_d = checkNumberEncoding()
+	size_i, size_I, size_f, size_d = checkNumberEncoding()
 
 	float_buffer = np.ndarray(nBins,dtype=float)
 
@@ -1396,7 +1407,7 @@ def writeInitialSpectrumFile(fname, nPart, nBins, f):
 
 def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None):
 
-	size_i, size_f, size_d = checkNumberEncoding()
+	size_i, size_I, size_f, size_d = checkNumberEncoding()
 	with open(fname,'rb') as file:
 		print "Read initial spectrum for tracer particles"
 
