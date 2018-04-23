@@ -479,6 +479,69 @@ def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 	return f, id, time
 
 
+####################################################################################################
+#
+class cre_snapshot:
+	def __init__(self, fname = None, verbose = False):
+		if fname is not None:
+			self.read_data(fname, verbose)
+
+	def read_data(self, fname, verbose = False):
+		size_i, size_I, size_f, size_d = checkNumberEncoding()
+		with open(fname,'rb') as file:
+			if(verbose):
+				print "Reading snapshot data from file '{:}'".format(fname)
+
+			# Header information
+			dummy = int(struct.unpack('i', file.read(size_i))[0])
+			blocksize = 2 * size_i + size_d
+			if dummy != blocksize:
+				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(dummy, blocksize))
+
+			self.time = float(struct.unpack('d', file.read(size_d))[0])
+			self.nPart = int(struct.unpack('i', file.read(size_i))[0])
+			self.nBins = int(struct.unpack('i', file.read(size_i))[0])
+
+			dummy = int(struct.unpack('i',file.read(size_i))[0])
+			if dummy != blocksize:
+				sys.exit("1st data block not correctly enclosed")
+
+			# Momentum Bins
+			dummy = int(struct.unpack('i', file.read(size_i))[0])
+			blocksize = self.nBins * size_d
+			if dummy != blocksize:
+				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(dummy, blocksize))			
+
+			self.p = np.ndarray(self.nBins, dtype=float)
+			self.p[:] = struct.unpack('{:d}d'.format(self.nBins), file.read(size_d * self.nBins))[:]
+
+			dummy = int(struct.unpack('i',file.read(size_i))[0])
+			if dummy != blocksize:
+				sys.exit("2nd data block not correctly enclosed")
+
+			# Spectrum Data
+			dummy = int(struct.unpack('i', file.read(size_i))[0])
+			blocksize = self.nPart * ( self.nBins * size_d + size_I)
+			if dummy != blocksize:
+				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(dummy, blocksize))
+
+			self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
+			self.id = np.ndarray(self.nPart, dtype=np.uint32)
+			for i in np.arange(self.nPart):
+				self.id[i] = struct.unpack('I', file.read(size_I))[0]
+				self.f[i, :] = struct.unpack('{:d}d'.format(self.nBins), file.read(size_d * self.nBins))[:]
+			
+			dummy = int(struct.unpack('i',file.read(size_i))[0])
+			if dummy != blocksize:
+				sys.exit("3rd data block not correctly enclosed")
+			
+
+			
+
+		
+			
+
+
 
 ####################################################################################################
 ## gives two numbers for representing a float in scientific notation
