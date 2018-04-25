@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import struct
 import sys
+from Physics import *
 
 
 ####################################################################################################
@@ -10,7 +11,7 @@ import sys
 class CRelectronParameters:
 	# instance variables
 
-	def __init__(self,ParameterFileName = None, RunID = None):
+	def __init__(self,ParameterFileName = None, RunID = None, verbose = False):
 		# need to set dummy values as these determine the types
 		self.Run_ID                      = 0
 
@@ -67,7 +68,6 @@ class CRelectronParameters:
 		self.ShockParamC                 = 0.
 
 		# new parameters with tracer data
-		self.NumberOfTracerParticles     = 1
 		self.FunctionValueChop           = 1.e-30
 
 		# Semi analytic treatement
@@ -78,7 +78,7 @@ class CRelectronParameters:
 		self.MinimumMomentumNumerics = 0.
 
 		if ParameterFileName is not None:
-			self.read_data(ParameterFileName, RunID)
+			self.read_data(ParameterFileName, RunID, verbose)
 
 	def __del__(self):
 		for var in vars(self):
@@ -94,9 +94,10 @@ class CRelectronParameters:
 				print '{:25} {:}'.format(var,getattr(self,var))
 	
 	# read in the parameter file and set the private class variables accordingly
-	def read_data(self,ParameterFileName, RunID = None):
+	def read_data(self,ParameterFileName, RunID = None, verbose = False):
 		fParam = open(ParameterFileName,'r')
-		print "Reading parameters from file '{:}'\n".format(ParameterFileName)
+		if verbose:
+			print "Reading parameters from file '{:}'\n".format(ParameterFileName)
 		for line in fParam:
 			lineParam = (line.strip()).lstrip()
 			
@@ -111,19 +112,23 @@ class CRelectronParameters:
 							if(var == columnParam[0]):
 								if type(getattr(self, var)) is int:
 									setattr(self,var,int(columnParam[1]))
-									print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
+									if verbose:
+										print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
 									continue
 								elif type(getattr(self, var)) is float:
 									setattr(self,var,float(columnParam[1]))
-									print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
+									if verbose:
+										print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
 									continue
 								elif type(getattr(self, var)) is str:
 									setattr(self,var,columnParam[1])
-									print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
+									if verbose:
+										print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
 									continue
 		if self.OutputDir[-1] != '/':
 			self.OutputDir += '/'
-		print '\n'
+		if verbose:
+			print '\n'
 		if RunID != None:
 			self.Run_ID = RunID
 		line = None
@@ -588,7 +593,7 @@ class OtherSolution:
 		
 class TracerOutput:
 	# instance variables
-	def __init__(self, fname = None, cgs_units = False):
+	def __init__(self, fname = None, cgs_units = False, verbose = False):
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
 		self.nSnap = 0
@@ -599,16 +604,17 @@ class TracerOutput:
 		self.UnitVelocity_in_cm_per_s = 1.
 
 		if fname is not None:
-			self.read_data(fname, cgs_units)
+			self.read_data(fname, cgs_units, verbose)
 
 
 	def __del__(self):
 		for var in vars(self):
 			setattr(self,var,None)
 
-	def read_data(self, fname, cgs_units = False, param = None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
+	def read_data(self, fname, cgs_units = False, param = None, verbose = False, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
 		with open(fname,'rb') as f:
-			print "Read Arepo's tracer output from file '{}'".format(fname)
+			if verbose:
+				print "Read Arepo's tracer output from file '{}'".format(fname)
 			size_i, size_I, size_f, size_d = checkNumberEncoding()
 
 			# Reading first block with unit system
@@ -643,8 +649,9 @@ class TracerOutput:
 			# go back to the beginning of the file
 			f.seek(3*size_i + 3*size_d, 0)
 			buf = 0
-			print 'Number of particles: {:d}'.format(self.nPart)
-			print 'Number of snapshots: {:d}'.format(self.nSnap)
+			if verbose:
+				print 'Number of particles: {:d}'.format(self.nPart)
+				print 'Number of snapshots: {:d}'.format(self.nSnap)
 
 			# create the arrays
 			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
@@ -714,33 +721,35 @@ class TracerOutput:
 				f.seek(size_i, 1)
 
 			f.close()
-			print "Data was successfully read"
+			if verbose:
+				print "Data was successfully read"
 			
 			if cgs_units:
-				self.scale_to_cgs()
+				self.scale_to_cgs(verbose)
 
-		def scale_to_cgs():	
-			print "Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s)
-			self.time           = np.multiply(self.time, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
-			self.x              = np.multiply(self.x, self.UnitLength_in_cm)
-			self.y              = np.multiply(self.y, self.UnitLength_in_cm)
-			self.z              = np.multiply(self.z, self.UnitLength_in_cm)
-			self.n_gas          = np.multiply(self.n_gas, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
-			self.temp           = np.multiply(self.temp, np.square(self.UnitVelocity_in_cm_per_s))
-			self.u_therm        = np.multiply(self.u_therm, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
+	def scale_to_cgs(self, verbose=False):	
+		if verbose:
+			print "Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s)
+		self.time           = np.multiply(self.time, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
+		self.x              = np.multiply(self.x, self.UnitLength_in_cm)
+		self.y              = np.multiply(self.y, self.UnitLength_in_cm)
+		self.z              = np.multiply(self.z, self.UnitLength_in_cm)
+		self.n_gas          = np.multiply(self.n_gas, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
+		self.temp           = np.multiply(self.temp, np.square(self.UnitVelocity_in_cm_per_s))
+		self.u_therm        = np.multiply(self.u_therm, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
 
-			self.B              = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
-			self.u_photon       = np.multiply(self.u_photon, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
+		self.B              = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
+		self.u_photon       = np.multiply(self.u_photon, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
 
-			self.n_gasPreShock  = np.multiply(self.n_gasPreShock,  self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))	
-			self.n_gasPostShock = np.multiply(self.n_gasPostShock, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
+		self.n_gasPreShock  = np.multiply(self.n_gasPreShock,  self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))	
+		self.n_gasPostShock = np.multiply(self.n_gasPostShock, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
 
-			self.BpreShock      = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
-			self.BpostShock     = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
-			self.VShock         = np.multiply(self.VShock, self.UnitVelocity_in_cm_per_s)		
-			self.timeShockCross = np.multiply(self.timeShockCross, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
+		self.BpreShock      = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
+		self.BpostShock     = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
+		self.VShock         = np.multiply(self.VShock, self.UnitVelocity_in_cm_per_s)		
+		self.timeShockCross = np.multiply(self.timeShockCross, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
 
-			self.injRate        = np.multiply(self.injRate, self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
+		self.injRate        = np.multiply(self.injRate, self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
 
 	def __getitem__(self, key):
 		# check dimensions of return
