@@ -638,7 +638,7 @@ class TracerOutput:
 
 			while(buf):
 				# move pointer forward
-				f.seek(self.nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d), 1) 
+				f.seek(self.nPart * (2 * size_i + 2 * size_I + 19 * size_f + 1 * size_d), 1) 
 
 				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
 					sys.exit("data not correctly enclosed 1, ")
@@ -657,6 +657,7 @@ class TracerOutput:
 			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
 			self.time           = np.ndarray((self.nPart, self.nSnap), dtype=float) # time or scale parameter
 			self.ParentCellID   = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
+			self.TracerDensity  = np.ndarray((self.nPart, self.TracerDensity), dtype=float)
 
 			self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -690,6 +691,8 @@ class TracerOutput:
 				self.ID[:, n]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				self.time[:, n]		      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.ParentCellID[:, n]   = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
+				self.TracerDensity[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
 				self.x[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.y[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.z[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
@@ -731,6 +734,7 @@ class TracerOutput:
 		if verbose:
 			print "Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s)
 		self.time           = np.multiply(self.time, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
+		self.TracerDensity  = np.multiply(self.TracerDensity, np.power(self.UnitLength_in_cm, -3.))
 		self.x              = np.multiply(self.x, self.UnitLength_in_cm)
 		self.y              = np.multiply(self.y, self.UnitLength_in_cm)
 		self.z              = np.multiply(self.z, self.UnitLength_in_cm)
@@ -786,6 +790,7 @@ class TracerOutput:
 		ret.ID             = self.ID.__getitem__(key)
 		ret.time           = self.time.__getitem__(key)
 		ret.ParentCellID   = self.ParentCellID.__getitem__(key)
+		ret.TracerDensity  = self.TracerDensity.__getitem__(key)
 
 		ret.x	            = self.x.__getitem__(key)
 		ret.y	            = self.y.__getitem__(key)
