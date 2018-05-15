@@ -632,13 +632,13 @@ class TracerOutput:
 			
 			# Reading block with data values
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
-			self.nPart = dummy / (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
+			self.nPart = dummy / (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
 			self.nSnap	= 0
 			buf 	= 1
 
 			while(buf):
 				# move pointer forward
-				f.seek(self.nPart * (2 * size_i + 2 * size_I + 19 * size_f + 1 * size_d), 1) 
+				f.seek(self.nPart * (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d), 1) 
 
 				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
 					sys.exit("data not correctly enclosed 1, ")
@@ -657,7 +657,7 @@ class TracerOutput:
 			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
 			self.time           = np.ndarray((self.nPart, self.nSnap), dtype=float) # time or scale parameter
 			self.ParentCellID   = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
-			self.TracerDensity  = np.ndarray((self.nPart, self.TracerDensity), dtype=float)
+			self.TracerDensity  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
 			self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -672,6 +672,7 @@ class TracerOutput:
 
 			# parameters for diffusive shock acceleration
 			self.ShockFlag      = np.ndarray((self.nPart, self.nSnap), dtype=int)
+			self.u_CReShockInj  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.n_gasPreShock  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.n_gasPostShock = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.BpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -703,6 +704,7 @@ class TracerOutput:
 				self.B[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.u_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+				self.u_CReShockInj[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
@@ -744,6 +746,8 @@ class TracerOutput:
 
 		self.B              = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
 		self.u_photon       = np.multiply(self.u_photon, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
+
+		self.u_CReShockInj  = np.multiply(self.u_CReShockInj, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
 
 		self.n_gasPreShock  = np.multiply(self.n_gasPreShock,  self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))	
 		self.n_gasPostShock = np.multiply(self.n_gasPostShock, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
@@ -805,6 +809,7 @@ class TracerOutput:
 
 		# parameters for diffusive shock acceleration
 		ret.ShockFlag      = self.ShockFlag.__getitem__(key)
+		ret.u_CReShockInj  = self.u_CReShockInj.__getitem__(key)
 		ret.n_gasPreShock  = self.n_gasPreShock.__getitem__(key)
 		ret.n_gasPostShock = self.n_gasPostShock.__getitem__(key)
 		ret.BpreShock      = self.BpreShock.__getitem__(key)
