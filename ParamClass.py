@@ -526,14 +526,20 @@ class cre_snapshot:
 
 			# Spectrum Data
 			dummy = int(struct.unpack('i', file.read(size_i))[0])
-			blocksize = self.nPart * ( self.nBins * size_d + size_I)
+			blocksize = self.nPart * ( self.nBins * size_d + size_I + 5 * size_d)
 			if dummy != blocksize:
 				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(dummy, blocksize))
 
 			self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
 			self.id = np.ndarray(self.nPart, dtype=np.uint32)
+			self.mass = np.ndarray(self.nPart, dtype=float)
+			self.n_gas = np.ndarray(self.nPart, dtype=float)
+			self.pos = np.ndarray((self.nPart, 3), dtype=float)
 			for i in np.arange(self.nPart):
 				self.id[i] = struct.unpack('I', file.read(size_I))[0]
+				self.mass[i] = struct.unpack('d', file.read(size_d))[0]
+				self.n_gas[i] = struct.unpack('d', file.read(size_d))[0]
+				self.pos[i, :] = struct.unpack('3d', file.read(3 * size_d))[:]
 				self.f[i, :] = struct.unpack('{:d}d'.format(self.nBins), file.read(size_d * self.nBins))[:]
 			
 			dummy = int(struct.unpack('i',file.read(size_i))[0])
@@ -657,7 +663,7 @@ class TracerOutput:
 			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
 			self.time           = np.ndarray((self.nPart, self.nSnap), dtype=float) # time or scale parameter
 			self.ParentCellID   = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
-			self.TracerDensity  = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			self.TracerMass     = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
 			self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
 			self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -692,7 +698,7 @@ class TracerOutput:
 				self.ID[:, n]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				self.time[:, n]		      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.ParentCellID[:, n]   = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
-				self.TracerDensity[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.TracerMass[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
 				self.x[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 				self.y[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
@@ -736,7 +742,7 @@ class TracerOutput:
 		if verbose:
 			print "Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s)
 		self.time           = np.multiply(self.time, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
-		self.TracerDensity  = np.multiply(self.TracerDensity, np.power(self.UnitLength_in_cm, -3.))
+		self.TracerMass     = np.multiply(self.TracerMass, self.UnitMass_in_g)
 		self.x              = np.multiply(self.x, self.UnitLength_in_cm)
 		self.y              = np.multiply(self.y, self.UnitLength_in_cm)
 		self.z              = np.multiply(self.z, self.UnitLength_in_cm)
@@ -794,7 +800,7 @@ class TracerOutput:
 		ret.ID             = self.ID.__getitem__(key)
 		ret.time           = self.time.__getitem__(key)
 		ret.ParentCellID   = self.ParentCellID.__getitem__(key)
-		ret.TracerDensity  = self.TracerDensity.__getitem__(key)
+		ret.TracerMass     = self.TracerMass.__getitem__(key)
 
 		ret.x	            = self.x.__getitem__(key)
 		ret.y	            = self.y.__getitem__(key)
