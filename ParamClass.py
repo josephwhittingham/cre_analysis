@@ -771,6 +771,10 @@ class TracerOutput:
 		# check dimensions of return
 		ret = TracerOutput()
 		ret.All_Units_in_cgs = self.All_Units_in_cgs
+		ret.UnitLength_in_cm = self.UnitLength_in_cm
+		ret.UnitMass_in_g = self.UnitMass_in_g
+		ret.UnitVelocity_in_cm_per_s = self.UnitVelocity_in_cm_per_s
+
 		if isinstance(key, int):
 			ret.nPart = 1
 			ret.nSnap = self.nSnap
