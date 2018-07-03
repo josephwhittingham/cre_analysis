@@ -1473,8 +1473,18 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 ####################################################################################################
 # Writes a binary file with the initial spectrum data
 
-def writeInitialSpectrumFile(fname, nPart, nBins, f):
+def writeInitialSpectrumFile(fname, nPart, nBins, f, sameSpectra=False):
+	# if sameSpectra = True, we assume a 1D momentum array for f which is the same for all particles
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
+
+	if sameSpectra:
+		if f.shape == (nPart, nBins):
+			sys.exit("Set sameSpectra=False in function call for different spectra for every particle")
+		if f.shape != (nBins, ):
+			sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, )".format('f', f.shape, nBins))
+	else:
+		if f.shape != (nPart, nBins):
+			sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('f', f.shape, nPart, nBins))	
 
 	float_buffer = np.ndarray(nBins,dtype=float)
 
@@ -1488,11 +1498,17 @@ def writeInitialSpectrumFile(fname, nPart, nBins, f):
 
 		# second block with actual data
 		file.write(struct.pack('i', nPart * nBins * size_d))
-		for i in np.arange(nPart):
-			file.write(struct.pack('{:d}d'.format(nBins), *f[i]))
+		if sameSpectra:
+			for i in np.arange(nPart):
+				file.write(struct.pack('{:d}d'.format(nBins), *f))
+		else:
+			for i in np.arange(nPart):
+				file.write(struct.pack('{:d}d'.format(nBins), *f[i]))
 
 		file.write(struct.pack('i',nPart * nBins * size_d))
 		file.close()
+		
+		print "Wrote initial spectrum for {:d} particles with {:d} momentum bins file to '{:s}'".format(nPart, nBins, fname)
 
 	return 0
 
