@@ -16,6 +16,7 @@ CMB_ENERGY_DENSITY   = 4.165659e-13    # (ergs / cm^3)
 ALPHA_FINESTRUCTURE  = 0.0072973526    # CODATA 2014
 PARSEC               = 3.085678e18
 SOLAR_MASS           = 1.989e33
+GAMMA                = 5./3.
 
 # Standard Parameters
 N_ELEC             = 1.157

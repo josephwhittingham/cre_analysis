@@ -750,7 +750,7 @@ class TracerOutput:
 		self.z              = np.multiply(self.z, self.UnitLength_in_cm)
 		self.n_gas          = np.multiply(self.n_gas, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
 		self.temp           = np.multiply(self.temp, np.square(self.UnitVelocity_in_cm_per_s))
-		self.u_therm        = np.multiply(self.u_therm, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
+		self.u_therm        = np.multiply(self.u_therm, np.square(self.UnitVelocity_in_cm_per_s))
 
 		self.B              = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
 		self.u_photon       = np.multiply(self.u_photon, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
