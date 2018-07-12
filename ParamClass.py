@@ -601,7 +601,7 @@ class OtherSolution:
 		
 class TracerOutput:
 	# instance variables
-	def __init__(self, fname = None, cgs_units = False, verbose = False):
+	def __init__(self, fname = None, cgs_units = False, verbose = False, read_only_ic= False):
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
 		self.nSnap = 0
@@ -612,16 +612,17 @@ class TracerOutput:
 		self.UnitVelocity_in_cm_per_s = 1.
 
 		if fname is not None:
-			self.read_data(fname, cgs_units, verbose)
+			self.read_data(fname, cgs_units, verbose, read_only_ic)
 
 
 	def __del__(self):
 		for var in vars(self):
 			setattr(self,var,None)
 
-	def read_data(self, fname, cgs_units = False, param = None, verbose = False, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
+	def read_data(self, fname, cgs_units = False, verbose = False, read_only_ic = False, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
 		with open(fname,'rb') as f:
 			if verbose:
+				print read_only_ic
 				print "Read Arepo's tracer output from file '{}'".format(fname)
 			size_i, size_I, size_f, size_d = checkNumberEncoding()
 
@@ -652,7 +653,10 @@ class TracerOutput:
 					sys.exit("data not correctly enclosed 1, ")
 
 				self.nSnap += 1
-				buf = f.read(size_i)
+				if read_only_ic:
+					buf = False
+				else:
+					buf = f.read(size_i)
 
 			# go back to the beginning of the file
 			f.seek(3*size_i + 3*size_d, 0)
