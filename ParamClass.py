@@ -1302,7 +1302,7 @@ def checkNumberEncoding():
 ####################################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
-def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
+def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, u_CRpShockInj, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
 	
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 
@@ -1316,6 +1316,9 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 	if ParentCellID.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('ParentCellID', ParentCellID.shape, nPart, nSnap))
 
+	if TracerMass.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('TracerMass', TracerMass.shape, nPart, nSnap))
+		
 	if x.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('x', pos_x.shape, nPart, nSnap))
 
@@ -1343,6 +1346,9 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 	if ShockFlag.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('ShockFlag', ShockFlag.shape, nPart, nSnap))
 
+	if u_CRpShockInj.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('u_CRpShockInj', u_CRpShockInj.shape, nPart, nSnap))
+		
 	if n_gasPreShock.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('n_gasPreShock', n_gasPreShock.shape, nPart, nSnap))
 
@@ -1378,7 +1384,7 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 
 	float_buffer = np.ndarray(nPart,dtype=float)
 	int_buffer   = np.ndarray(nPart,dtype=int)
-	uint_buffer  = np.ndarray(nPart,dtype=uint32)
+	uint_buffer  = np.ndarray(nPart,dtype=np.uint32)
 
 	with open(fileName,'wb') as f:
 		dummy = 3 * size_d
@@ -1389,7 +1395,7 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 		f.write(struct.pack('i',dummy))
 
 
-		dummy = nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
+		dummy = nPart * (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
 		f.write(struct.pack('i',dummy))
 
 		for s in np.arange(nSnap):
@@ -1401,7 +1407,10 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 
 			uint_buffer[:] = ParentCellID[:, s]
 			f.write(struct.pack('{:d}I'.format(nPart), *uint_buffer))			
-			
+
+			float_buffer[:] = TracerMass[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))			
+
 			float_buffer[:] = x[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
@@ -1430,6 +1439,10 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 			# parameters for diffusive shock acceleration
 			int_buffer[:] = ShockFlag[:, s]
 			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))
+
+			float_buffer[:] = u_CRpShockInj[:, s]
+			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
+
 
 			float_buffer[:] = n_gasPreShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
