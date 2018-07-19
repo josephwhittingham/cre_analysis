@@ -601,7 +601,7 @@ class OtherSolution:
 		
 class TracerOutput:
 	# instance variables
-	def __init__(self, fname = None, cgs_units = False, verbose = False, read_only_ic= False):
+	def __init__(self, fname = None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None):
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
 		self.nSnap = 0
@@ -612,14 +612,14 @@ class TracerOutput:
 		self.UnitVelocity_in_cm_per_s = 1.
 
 		if fname is not None:
-			self.read_data(fname, cgs_units, verbose, read_only_ic)
+			self.read_data(fname, cgs_units, verbose, read_only_ic, specific_particles)
 
 
 	def __del__(self):
 		for var in vars(self):
 			setattr(self,var,None)
 
-	def read_data(self, fname, cgs_units = False, verbose = False, read_only_ic = False, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
+	def read_data(self, fname, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
 		with open(fname,'rb') as f:
 			if verbose:
 				print read_only_ic
@@ -642,8 +642,10 @@ class TracerOutput:
 			# Reading block with data values
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
 			self.nPart = dummy / (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
+			nPartInFile = self.nPart
 			self.nSnap	= 0
-			buf 	= 1
+			buf 	= 1				
+						
 
 			while(buf):
 				# move pointer forward
@@ -658,6 +660,30 @@ class TracerOutput:
 				else:
 					buf = f.read(size_i)
 
+			if specific_particles is not None:
+				# set attributes for reading a single particle
+				if type(specific_particles) is int:
+					if specific_particles <= self.nPart:
+						self.nPart = 1
+					else:
+						sys.exit("Cannot read particle {:d} as there are only {:d} particles".format(specific_particles, self.nPart))
+				elif type(specific_particles) is slice:
+					# set attributes for reading a slice
+					if specific_particles.stop <= self.nPart:
+						if type(specific_particles) is int:
+							self.nPart = (specific_particles.stop - specific_particles.start) / specific_particles.step
+							if (specific_particles.stop - specific_particles.start) % specific_particles.step > 0:
+								self.nPart += 1
+						else:
+							self.nPart = (specific_particles.stop - specific_particles.start)
+
+
+
+					else:
+						sys.exit("Cannot read particles until {:d} as there are only {:d} particles".format(specific_particles.stop, self.nPart))
+				else:
+					sys.exit("specific_particles = {:} not supported".format(specific_particles))
+
 			# go back to the beginning of the file
 			f.seek(3*size_i + 3*size_d, 0)
 			buf = 0
@@ -665,77 +691,244 @@ class TracerOutput:
 				print 'Number of particles: {:d}'.format(self.nPart)
 				print 'Number of snapshots: {:d}'.format(self.nSnap)
 
-			# create the arrays
-			self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
-			self.time           = np.ndarray((self.nPart, self.nSnap), dtype=float) # time or scale parameter
-			self.ParentCellID   = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
-			self.TracerMass     = np.ndarray((self.nPart, self.nSnap), dtype=float)
+			if type(specific_particles) is not int:
+				# create the arrays
+				self.ID             = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
+				self.time           = np.ndarray((self.nPart, self.nSnap), dtype=float) # time or scale parameter
+				self.ParentCellID   = np.ndarray((self.nPart, self.nSnap), dtype=np.uint32)
+				self.TracerMass     = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
-			self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.z	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.n_gas	        = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.temp	        = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.u_therm        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.x	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.y	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.z	            = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.n_gas	        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.temp	        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.u_therm        = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
-			# parameters for cooling
-			self.B			    = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.u_photon       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				# parameters for cooling
+				self.B			    = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.u_photon       = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
-			# parameters for diffusive shock acceleration
-			self.ShockFlag      = np.ndarray((self.nPart, self.nSnap), dtype=int)
-			self.u_CRpShockInj  = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.n_gasPreShock  = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.n_gasPostShock = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.BpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.BpostShock     = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.VShock         = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.timeShockCross = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.cosTheta       = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			
-			# parameters for electron injection (apart from DSA given above)
-			self.CReInjection   = np.ndarray((self.nPart, self.nSnap), dtype=int)
-			self.injRate        = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.alphaInj       = np.ndarray((self.nPart, self.nSnap), dtype=float)
-			self.pInj           = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				# parameters for diffusive shock acceleration
+				self.ShockFlag      = np.ndarray((self.nPart, self.nSnap), dtype=int)
+				self.u_CRpShockInj  = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.n_gasPreShock  = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.n_gasPostShock = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.BpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.BpostShock     = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.VShock         = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.timeShockCross = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.cosTheta       = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
-			# read the data
-			for n in np.arange(self.nSnap):
-				self.ID[:, n]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
-				self.time[:, n]		      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				self.ParentCellID[:, n]   = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
-				self.TracerMass[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				# parameters for electron injection (apart from DSA given above)
+				self.CReInjection   = np.ndarray((self.nPart, self.nSnap), dtype=int)
+				self.injRate        = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.alphaInj       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.pInj           = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
-				self.x[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.y[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.z[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.n_gas[:, n]		  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.temp[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.u_therm[:, n]	      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+			else:
+				# create the arrays
+				self.ID             = np.ndarray(self.nSnap, dtype=np.uint32)
+				self.time           = np.ndarray(self.nSnap, dtype=float) # time or scale parameter
+				self.ParentCellID   = np.ndarray(self.nSnap, dtype=np.uint32)
+				self.TracerMass     = np.ndarray(self.nSnap, dtype=float)
 
-				self.B[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.u_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-				self.u_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				self.x	            = np.ndarray(self.nSnap, dtype=float)
+				self.y	            = np.ndarray(self.nSnap, dtype=float)
+				self.z	            = np.ndarray(self.nSnap, dtype=float)
+				self.n_gas	        = np.ndarray(self.nSnap, dtype=float)
+				self.temp	        = np.ndarray(self.nSnap, dtype=float)
+				self.u_therm        = np.ndarray(self.nSnap, dtype=float)
 
-				self.BpreShock[:, n]      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.BpostShock[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.VShock[:, n]         = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				# parameters for cooling
+				self.B			    = np.ndarray(self.nSnap, dtype=float)
+				self.u_photon       = np.ndarray(self.nSnap, dtype=float)
 
-				self.CReInjection[:, n]   = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-				self.injRate[:, n]        = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.alphaInj[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				self.pInj[:, n]           = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+				# parameters for diffusive shock acceleration
+				self.ShockFlag      = np.ndarray(self.nSnap, dtype=int)
+				self.u_CRpShockInj  = np.ndarray(self.nSnap, dtype=float)
+				self.n_gasPreShock  = np.ndarray(self.nSnap, dtype=float)
+				self.n_gasPostShock = np.ndarray(self.nSnap, dtype=float)
+				self.BpreShock      = np.ndarray(self.nSnap, dtype=float)
+				self.BpostShock     = np.ndarray(self.nSnap, dtype=float)
+				self.VShock         = np.ndarray(self.nSnap, dtype=float)
+				self.timeShockCross = np.ndarray(self.nSnap, dtype=float)
+				self.cosTheta       = np.ndarray(self.nSnap, dtype=float)
+
+				# parameters for electron injection (apart from DSA given above)
+				self.CReInjection   = np.ndarray(self.nSnap, dtype=int)
+				self.injRate        = np.ndarray(self.nSnap, dtype=float)
+				self.alphaInj       = np.ndarray(self.nSnap, dtype=float)
+				self.pInj           = np.ndarray(self.nSnap, dtype=float)
 
 
-				if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
-					sys.exit("data not correctly enclosed, ")
 
-				f.seek(size_i, 1)
+			if specific_particles is None:
+				# read all the data
+				for n in np.arange(self.nSnap):
+					self.ID[:, n]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
+					self.time[:, n]		      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+					self.ParentCellID[:, n]   = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
+					self.TracerMass[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+					self.x[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.y[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.z[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.n_gas[:, n]		  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.temp[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.u_therm[:, n]	      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+					self.B[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.u_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+					self.u_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+					self.BpreShock[:, n]      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.BpostShock[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.VShock[:, n]         = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+					self.CReInjection[:, n]   = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+					self.injRate[:, n]        = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.alphaInj[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.pInj[:, n]           = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+
+
+					if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
+						sys.exit("data not correctly enclosed, ")
+
+					f.seek(size_i, 1)
+
+			elif type(specific_particles) is int:
+				pos = specific_particles
+				# read single data
+				for n in np.arange(self.nSnap):
+					f.seek(pos * size_I, 1)
+
+					self.ID[n]             = struct.unpack('I', f.read(size_I))[0]
+					f.seek((nPartInFile - pos - 1) * size_I + pos * size_d, 1)
+
+					self.time[n]		      = struct.unpack('d', f.read(size_d))[0]
+					f.seek((nPartInFile - pos - 1) * size_d + pos * size_I, 1)
+
+					self.ParentCellID[n]   = struct.unpack('I', f.read(size_I))[0]
+					f.seek((nPartInFile - pos - 1) * size_I + pos * size_f, 1)
+
+					self.TracerMass[n]     = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.x[n]		      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.y[n]		      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.z[n]		      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.n_gas[n]		  = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.temp[n]		      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.u_therm[n]	      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.B[n]		      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.u_photon[n]       = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_i, 1)
+
+					self.ShockFlag[n]      = struct.unpack('i', f.read(size_i))[0]
+					f.seek((nPartInFile - pos - 1) * size_i + pos * size_f, 1)
+
+					self.u_CRpShockInj[n]  = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.n_gasPreShock[n]  = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.n_gasPostShock[n] = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.BpreShock[n]      = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.BpostShock[n]     = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.VShock[n]         = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.timeShockCross[n] = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.cosTheta[n]       = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_i, 1)
+
+					self.CReInjection[n]   = struct.unpack('i', f.read(size_i))[0]
+					f.seek((nPartInFile - pos - 1) * size_i + pos * size_f, 1)
+
+					self.injRate[n]        = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.alphaInj[n]       = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
+
+					self.pInj[n]           = struct.unpack('f', f.read(size_f))[0]
+					f.seek((nPartInFile - pos - 1) * size_f, 1)
+
+
+					if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
+						sys.exit("data not correctly enclosed, ")
+
+					f.seek(size_i, 1)
+
+			else:
+				# read all the data but just take a slice out of it
+				for n in np.arange(self.nSnap):
+					self.ID[:, n]             = struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile))[specific_particles]
+					self.time[:, n]		      = struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile))[specific_particles]
+					self.ParentCellID[:, n]   = struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile))[specific_particles]
+					self.TracerMass[:, n]     = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+
+					self.x[:, n]		      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.y[:, n]		      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.z[:, n]		      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.n_gas[:, n]		  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.temp[:, n]		      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.u_therm[:, n]	      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+
+					self.B[:, n]		      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.u_photon[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile))[specific_particles]
+					self.u_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+
+					self.BpreShock[:, n]      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.BpostShock[:, n]     = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.VShock[:, n]         = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+
+					self.CReInjection[:, n]   = struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile))[specific_particles]
+					self.injRate[:, n]        = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.alphaInj[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.pInj[:, n]           = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+
+
+					if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
+						sys.exit("data not correctly enclosed, ")
+
+					f.seek(size_i, 1)
+
+				
 
 			f.close()
 			if verbose:
