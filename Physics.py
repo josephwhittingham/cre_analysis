@@ -149,8 +149,8 @@ def SolutionSteadyStateElectrons(p, param, part, tp_id, snap):
 
 	iInj = np.where(p >= part.pInj[tp_id, snap])[0][0]
 
-	fA[ : iInj] = np.divide(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.) * np.power(part.pInj[tp_id, snap], 1. - part.alphaInj[tp_id, snap]), np.abs(np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.u_photon[tp_id, snap], part.B[tp_id, snap], z))[ : iInj])) 
-	fA[iInj : ] = np.multiply(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.), np.divide( np.power(p, 1. - part.alphaInj[tp_id, snap]),  np.abs(np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.u_photon[tp_id, snap], part.B[tp_id, snap], z))))[iInj : ] )
+	fA[ : iInj] = np.divide(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.) * np.power(part.pInj[tp_id, snap], 1. - part.alphaInj[tp_id, snap]), np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.u_photon[tp_id, snap], part.B[tp_id, snap], z)))[ : iInj])) 
+	fA[iInj : ] = np.multiply(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.), np.divide( np.power(p, 1. - part.alphaInj[tp_id, snap]),  np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.u_photon[tp_id, snap], part.B[tp_id, snap], z)))))[iInj : ] )
 	
 	return fA
 
