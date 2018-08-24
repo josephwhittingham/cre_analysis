@@ -487,16 +487,17 @@ def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 ####################################################################################################
 #
 class cre_snapshot:
-	def __init__(self, fname = None, verbose = False):
+	def __init__(self, fname = None, verbose = False, get_only_header = False):
 		if fname is not None:
-			self.read_data(fname, verbose)
+			self.read_data(fname, verbose, get_only_header)
 
-	def read_data(self, fname, verbose = False):
+	def read_data(self, fname, verbose = False, get_only_header = False):
 		size_i, size_I, size_f, size_d = checkNumberEncoding()
 		with open(fname,'rb') as file:
 			if(verbose):
 				print "Reading snapshot data from file '{:}'".format(fname)
 
+			
 			# Header information
 			dummy = int(struct.unpack('i', file.read(size_i))[0])
 			blocksize = 2 * size_i + size_d
@@ -519,34 +520,35 @@ class cre_snapshot:
 
 			self.p = np.ndarray(self.nBins, dtype=float)
 			self.p[:] = struct.unpack('{:d}d'.format(self.nBins), file.read(size_d * self.nBins))[:]
-
+			
 			dummy = int(struct.unpack('i',file.read(size_i))[0])
 			if dummy != blocksize:
 				sys.exit("2nd data block not correctly enclosed")
 
-			# Spectrum Data
-			dummy = int(struct.unpack('i', file.read(size_i))[0])
-			blocksize = self.nPart * ( self.nBins * size_d + size_I + 6 * size_d)
-			if dummy != blocksize:
-				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(dummy, blocksize))
+			if not get_only_header:
+				# Spectrum Data
+				dummy = int(struct.unpack('i', file.read(size_i))[0])
+				blocksize = self.nPart * ( self.nBins * size_d + size_I + 6 * size_d)
+				if dummy != blocksize:
+					sys.exit("Block size is {:d} bytes, but expexted {:d}".format(dummy, blocksize))
 
-			self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
-			self.id = np.ndarray(self.nPart, dtype=np.uint32)
-			self.mass = np.ndarray(self.nPart, dtype=float)
-			self.n_gas = np.ndarray(self.nPart, dtype=float)
-			self.u_therm = np.ndarray(self.nPart, dtype=float)
-			self.pos = np.ndarray((self.nPart, 3), dtype=float)
-			for i in np.arange(self.nPart):
-				self.id[i] = struct.unpack('I', file.read(size_I))[0]
-				self.mass[i] = struct.unpack('d', file.read(size_d))[0]
-				self.n_gas[i] = struct.unpack('d', file.read(size_d))[0]
-				self.u_therm[i] = struct.unpack('d', file.read(size_d))[0]
-				self.pos[i, :] = struct.unpack('3d', file.read(3 * size_d))[:]
-				self.f[i, :] = struct.unpack('{:d}d'.format(self.nBins), file.read(size_d * self.nBins))[:]
-			
-			dummy = int(struct.unpack('i',file.read(size_i))[0])
-			if dummy != blocksize:
-				sys.exit("3rd data block not correctly enclosed")
+				self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
+				self.id = np.ndarray(self.nPart, dtype=np.uint32)
+				self.mass = np.ndarray(self.nPart, dtype=float)
+				self.n_gas = np.ndarray(self.nPart, dtype=float)
+				self.u_therm = np.ndarray(self.nPart, dtype=float)
+				self.pos = np.ndarray((self.nPart, 3), dtype=float)
+				for i in np.arange(self.nPart):
+					self.id[i] = struct.unpack('I', file.read(size_I))[0]
+					self.mass[i] = struct.unpack('d', file.read(size_d))[0]
+					self.n_gas[i] = struct.unpack('d', file.read(size_d))[0]
+					self.u_therm[i] = struct.unpack('d', file.read(size_d))[0]
+					self.pos[i, :] = struct.unpack('3d', file.read(3 * size_d))[:]
+					self.f[i, :] = struct.unpack('{:d}d'.format(self.nBins), file.read(size_d * self.nBins))[:]
+
+				dummy = int(struct.unpack('i',file.read(size_i))[0])
+				if dummy != blocksize:
+					sys.exit("3rd data block not correctly enclosed")
 			
 
 			
