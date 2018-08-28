@@ -61,6 +61,7 @@ class CRelectronParameters:
 		self.n_elec                      = 1.157
 		self.HydrogenMassFrac            = 0.76
 		self.DiffusionTimeInGyr          = 0.
+		self.Lambda                      = 0.
 
 		# parameters for shock injection
 		self.ShockParamA                 = 0.
@@ -135,6 +136,16 @@ class CRelectronParameters:
 		lineParam = None
 		columnParam = None
 		fParam.close()
+
+	def BinsPerDec(self):
+		return (self.NumberOfMomentumBins - self.IncludeMaximumMomentum)/ int(np.log10(self.MaximumMomentum) - np.log10(self.MinimumMomentum))
+
+
+
+
+
+
+
 
 ####################################################################################################
 # class which handles all the Snapshot which was also provided to the C program
