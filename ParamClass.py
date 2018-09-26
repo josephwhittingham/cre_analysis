@@ -663,7 +663,6 @@ class TracerOutput:
 			while(buf):
 				# move pointer forward
 				f.seek(self.nPart * (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d), 1) 
-
 				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
 					sys.exit("data not correctly enclosed 1, ")
 
@@ -1738,7 +1737,7 @@ def writeInitialSpectrumFile(fname, nPart, nBins, f, sameSpectra=False):
 ####################################################################################################
 # Reads a binary file with the initial spectrum data
 
-def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None):
+def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None, sameSpectra=False):
 
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 	with open(fname,'rb') as file:
@@ -1763,16 +1762,23 @@ def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None):
 		if dummy != 2 * size_i:
 			sys.exit("1st data block not correctly enclosed")
 
-
-		f = np.ndarray((nPart, nBins), dtype=float)
+		# if we assume that all particles contain the same spectrum we just read the spectrum of the first particle and we're done
+		if sameSpectra:
+			f = np.ndarray(nBins, dtype=float)
+		else:
+			f = np.ndarray((nPart, nBins), dtype=float)
 
 		# Read now the actual spectral data
 		dummy = int(struct.unpack('i',file.read(size_i))[0])
 		if dummy != nPart * nBins * size_d:
 			sys.exit("Block size is {:d} dummy, but expected {:d}".format(dummy, nPart * nBins * size_d))
 
-		for i in np.arange(nPart):
-			f[i] = struct.unpack('{:d}d'.format(nBins), file.read(size_d * nBins))
+		if sameSpectra:
+			f = np.copy(struct.unpack('{:d}d'.format(nBins), file.read(size_d * nBins)))
+			file.seek((nPart - 1) * size_d * nBins, 1) 
+		else:
+			for i in np.arange(nPart):
+				f[i] = np.copy(struct.unpack('{:d}d'.format(nBins), file.read(size_d * nBins)))
 
 		dummy = int(struct.unpack('i',file.read(size_i))[0])
 		if dummy != nPart * nBins * size_d:
