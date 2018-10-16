@@ -719,11 +719,11 @@ class TracerOutput:
 
 				# parameters for cooling
 				self.B			    = np.ndarray((self.nPart, self.nSnap), dtype=float)
-				self.u_photon       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.eps_photon       = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
 				# parameters for diffusive shock acceleration
 				self.ShockFlag      = np.ndarray((self.nPart, self.nSnap), dtype=int)
-				self.u_CRpShockInj  = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.eps_CRpShockInj  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.n_gasPreShock  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.n_gasPostShock = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.BpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -754,11 +754,11 @@ class TracerOutput:
 
 				# parameters for cooling
 				self.B			    = np.ndarray(self.nSnap, dtype=float)
-				self.u_photon       = np.ndarray(self.nSnap, dtype=float)
+				self.eps_photon       = np.ndarray(self.nSnap, dtype=float)
 
 				# parameters for diffusive shock acceleration
 				self.ShockFlag      = np.ndarray(self.nSnap, dtype=int)
-				self.u_CRpShockInj  = np.ndarray(self.nSnap, dtype=float)
+				self.eps_CRpShockInj  = np.ndarray(self.nSnap, dtype=float)
 				self.n_gasPreShock  = np.ndarray(self.nSnap, dtype=float)
 				self.n_gasPostShock = np.ndarray(self.nSnap, dtype=float)
 				self.BpreShock      = np.ndarray(self.nSnap, dtype=float)
@@ -791,9 +791,9 @@ class TracerOutput:
 					self.u_therm[:, n]	      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
 					self.B[:, n]		      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-					self.u_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.eps_photon[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-					self.u_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.eps_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
@@ -853,13 +853,13 @@ class TracerOutput:
 					self.B[n]		      = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
 
-					self.u_photon[n]       = struct.unpack('f', f.read(size_f))[0]
+					self.eps_photon[n]       = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_i, 1)
 
 					self.ShockFlag[n]      = struct.unpack('i', f.read(size_i))[0]
 					f.seek((nPartInFile - pos - 1) * size_i + pos * size_f, 1)
 
-					self.u_CRpShockInj[n]  = struct.unpack('f', f.read(size_f))[0]
+					self.eps_CRpShockInj[n]  = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
 
 					self.n_gasPreShock[n]  = struct.unpack('f', f.read(size_f))[0]
@@ -917,9 +917,9 @@ class TracerOutput:
 					self.u_therm[:, n]	      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 
 					self.B[:, n]		      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
-					self.u_photon[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.eps_photon[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.ShockFlag[:, n]      = struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile))[specific_particles]
-					self.u_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.eps_CRpShockInj[:, n]  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 
@@ -962,9 +962,9 @@ class TracerOutput:
 		self.u_therm        = np.multiply(self.u_therm, np.square(self.UnitVelocity_in_cm_per_s))
 
 		self.B              = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
-		self.u_photon       = np.multiply(self.u_photon, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
+		self.eps_photon       = np.multiply(self.eps_photon, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
 
-		self.u_CRpShockInj  = np.multiply(self.u_CRpShockInj, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
+		self.eps_CRpShockInj  = np.multiply(self.eps_CRpShockInj, self.UnitMass_in_g * np.square(self.UnitVelocity_in_cm_per_s) / np.power(self.UnitLength_in_cm, 3))
 
 		self.n_gasPreShock  = np.multiply(self.n_gasPreShock,  self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))	
 		self.n_gasPostShock = np.multiply(self.n_gasPostShock, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
@@ -1026,11 +1026,11 @@ class TracerOutput:
 
 		# parameters for cooling
 		ret.B			    = self.B.__getitem__(key)
-		ret.u_photon       = self.u_photon.__getitem__(key)
+		ret.eps_photon       = self.eps_photon.__getitem__(key)
 
 		# parameters for diffusive shock acceleration
 		ret.ShockFlag      = self.ShockFlag.__getitem__(key)
-		ret.u_CRpShockInj  = self.u_CRpShockInj.__getitem__(key)
+		ret.eps_CRpShockInj  = self.eps_CRpShockInj.__getitem__(key)
 		ret.n_gasPreShock  = self.n_gasPreShock.__getitem__(key)
 		ret.n_gasPostShock = self.n_gasPostShock.__getitem__(key)
 		ret.BpreShock      = self.BpreShock.__getitem__(key)
@@ -1091,7 +1091,7 @@ class TracerOutput:
 
 	# 		# parameters for cooling
 	# 		ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.u_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
+	# 		ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 
 	# 		# parameters for diffusive shock acceleration
 	# 		ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
@@ -1120,7 +1120,7 @@ class TracerOutput:
 	# 		ret.u_therm[0, :]	     = self.u_therm[key, :] 
 
 	# 		ret.B[0, :]		         = self.B[key, :] 
-	# 		ret.u_photon[0, :]       = self.u_photon[key, :] 
+	# 		ret.eps_photon[0, :]       = self.eps_photon[key, :] 
 
 	# 		ret.ShockFlag[0, :]      = self.ShockFlag[key, :] 
 	# 		ret.n_gasPreShock[0, :]    = self.n_gasPreShock[key, :] 
@@ -1157,7 +1157,7 @@ class TracerOutput:
 
 	# 	# parameters for cooling
 	# 	ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.u_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
+	# 	ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 
 	# 	# parameters for diffusive shock acceleration
 	# 	ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
@@ -1189,7 +1189,7 @@ class TracerOutput:
 	# 		ret.u_therm[j, :]	     = self.u_therm[i, :] 
 
 	# 		ret.B[j, :]		         = self.B[i, :] 
-	# 		ret.u_photon[j, :]       = self.u_photon[i, :] 
+	# 		ret.eps_photon[j, :]       = self.eps_photon[i, :] 
 
 	# 		ret.ShockFlag[j, :]      = self.ShockFlag[i, :] 
 	# 		ret.n_gasPreShock[j, :]    = self.n_gasPreShock[i, :] 
@@ -1233,7 +1233,7 @@ class TracerOutput:
 
 	# 		# parameters for cooling
 	# 		ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.u_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
+	# 		ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 
 	# 		# parameters for diffusive shock acceleration
 	# 		ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
@@ -1263,7 +1263,7 @@ class TracerOutput:
 	# 			ret.u_therm[p, :]	     = self.u_therm[p, key] 
 
 	# 			ret.B[p, :]		         = self.B[p, key] 
-	# 			ret.u_photon[p, :]       = self.u_photon[p, key] 
+	# 			ret.eps_photon[p, :]       = self.eps_photon[p, key] 
 
 	# 			ret.ShockFlag[p, :]      = self.ShockFlag[p, key] 
 	# 			ret.n_gasPreShock[p, :]    = self.n_gasPreShock[p, key] 
@@ -1300,7 +1300,7 @@ class TracerOutput:
 
 	# 	# parameters for cooling
 	# 	ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.u_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
+	# 	ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 
 	# 	# parameters for diffusive shock acceleration
 	# 	ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
@@ -1333,7 +1333,7 @@ class TracerOutput:
 	# 			ret.u_therm[p, j]	     = self.u_therm[p, i] 
 
 	# 			ret.B[p, j]		         = self.B[p, i] 
-	# 			ret.u_photon[p, j]       = self.u_photon[p, i] 
+	# 			ret.eps_photon[p, j]       = self.eps_photon[p, i] 
 
 	# 			ret.ShockFlag[p, j]      = self.ShockFlag[p, i] 
 	# 			ret.n_gasPreShock[p, j]    = self.n_gasPreShock[p, i] 
@@ -1425,7 +1425,7 @@ class TracerOutputOld:
 			self.u_therm = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
 			if with_cr_electrons:
-				self.u_photon   = np.ndarray((self.nPart, self.nSnap), dtype=float) # TODO: Read real data or calculate them
+				self.eps_photon   = np.ndarray((self.nPart, self.nSnap), dtype=float) # TODO: Read real data or calculate them
 				self.B			= np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.Dist		= np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.Comp		= np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -1507,7 +1507,7 @@ def checkNumberEncoding():
 ####################################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
-def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, u_photon, ShockFlag, u_CRpShockInj, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
+def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, eps_photon, ShockFlag, eps_CRpShockInj, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
 	
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 
@@ -1545,14 +1545,14 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 	if B.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('B', B.shape, nPart, nSnap))
 
-	if u_photon.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('u_photon', u_photon.shape, nPart, nSnap))
+	if eps_photon.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('eps_photon', eps_photon.shape, nPart, nSnap))
 
 	if ShockFlag.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('ShockFlag', ShockFlag.shape, nPart, nSnap))
 
-	if u_CRpShockInj.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('u_CRpShockInj', u_CRpShockInj.shape, nPart, nSnap))
+	if eps_CRpShockInj.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('eps_CRpShockInj', eps_CRpShockInj.shape, nPart, nSnap))
 		
 	if n_gasPreShock.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('n_gasPreShock', n_gasPreShock.shape, nPart, nSnap))
@@ -1638,14 +1638,14 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 			float_buffer[:] = B[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = u_photon[:, s]
+			float_buffer[:] = eps_photon[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
 			# parameters for diffusive shock acceleration
 			int_buffer[:] = ShockFlag[:, s]
 			f.write(struct.pack('{:d}i'.format(nPart), *int_buffer))
 
-			float_buffer[:] = u_CRpShockInj[:, s]
+			float_buffer[:] = eps_CRpShockInj[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
 
