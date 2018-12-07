@@ -62,6 +62,7 @@ class CRelectronParameters:
 		self.HydrogenMassFrac            = 0.76
 		self.DiffusionTimeInGyr          = 0.
 		self.Lambda                      = 0.
+		self.Radiation_Field_in_eps_CMB  = -1. # if this value is -1 then it was not set
 
 		# parameters for shock injection
 		self.ShockParamA                 = 0.
