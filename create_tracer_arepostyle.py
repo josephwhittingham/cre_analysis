@@ -10,15 +10,15 @@ fname = 'tracer.dat'
 
 size_i = struct.calcsize('i')
 if size_i != 4:
-    print "Type 'int' is not 32 bit on this platform"
+    print("Type 'int' is not 32 bit on this platform")
 
 size_f = struct.calcsize('f')
 if size_f !=4:
-    print "Type 'float' is not 32 bit on this platform"
+    print("Type 'float' is not 32 bit on this platform")
     
 size_d = struct.calcsize('d')
 if size_d !=8:
-    print "Type 'double' is not 32 bit on this platform"
+    print("Type 'double' is not 32 bit on this platform")
 
 
 # Number of Snapshots and tracer particles

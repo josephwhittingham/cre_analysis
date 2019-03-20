@@ -89,17 +89,17 @@ class CRelectronParameters:
 	def show(self):
 		for var in vars(self):
 			if type(getattr(self, var)) is int:
-				print '{:25} {:d}'.format(var,getattr(self,var))
+				print("{:25} {:d}".format(var,getattr(self,var)))
 			if type(getattr(self, var)) is float:
-				print '{:25} {:.5e}'.format(var,getattr(self,var))
+				print("{:25} {:.5e}".format(var,getattr(self,var)))
 			if type(getattr(self, var)) is str:
-				print '{:25} {:}'.format(var,getattr(self,var))
+				print("{:25} {:}".format(var,getattr(self,var)))
 	
 	# read in the parameter file and set the private class variables accordingly
 	def read_data(self,ParameterFileName, RunID = None, verbose = False):
 		fParam = open(ParameterFileName,'r')
 		if verbose:
-			print "Reading parameters from file '{:}'\n".format(ParameterFileName)
+			print("Reading parameters from file '{:}'\n".format(ParameterFileName))
 		for line in fParam:
 			lineParam = (line.strip()).lstrip()
 			
@@ -115,22 +115,22 @@ class CRelectronParameters:
 								if type(getattr(self, var)) is int:
 									setattr(self,var,int(columnParam[1]))
 									if verbose:
-										print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
 									continue
 								elif type(getattr(self, var)) is float:
 									setattr(self,var,float(columnParam[1]))
 									if verbose:
-										print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
 									continue
 								elif type(getattr(self, var)) is str:
 									setattr(self,var,columnParam[1])
 									if verbose:
-										print '\t{:25} {:}'.format(columnParam[0],columnParam[1])
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
 									continue
 		if self.OutputDir[-1] != '/':
 			self.OutputDir += '/'
 		if verbose:
-			print '\n'
+			print("\n")
 		if RunID != None:
 			self.Run_ID = RunID
 		line = None
@@ -139,7 +139,7 @@ class CRelectronParameters:
 		fParam.close()
 
 	def BinsPerDec(self):
-		return (self.NumberOfMomentumBins - self.IncludeMaximumMomentum)/ int(np.log10(self.MaximumMomentum) - np.log10(self.MinimumMomentum))
+		return (self.NumberOfMomentumBins - self.IncludeMaximumMomentum) / int(np.log10(self.MaximumMomentum) - np.log10(self.MinimumMomentum))
 
 
 
@@ -179,9 +179,9 @@ class SnapshotData:
 
 	def read_data(self,DataFileName):
 		fData = open(DataFileName)
-		print "Reading data from file '{:}'\n".format(DataFileName)
-		print "\t time (s) \t n_gas (cm^-3) \t B (G) \n"        
-		#print "\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t n_gas \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n"
+		print("Reading data from file '{:}'\n".format(DataFileName))
+		print("\t time (s) \t n_gas (cm^-3) \t B (G) \n")        
+		#print("\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t n_gas \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n")
 		for line in fData:
 			lineData = (line.strip()).lstrip()
 			if(lineData != ''): #ignore empty lines
@@ -198,8 +198,8 @@ class SnapshotData:
 					#self.vel_z[self.NumberOfSnapshots]     = float(columnData[8])
 					#self.dedt[self.NumberOfSnapshots]     = float(columnData[9])
 					self.B[self.NumberOfSnapshots]     = float(columnData[10])
-					#print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.pos_x[self.NumberOfSnapshots], self.pos_y[self.NumberOfSnapshots], self.pos_z[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots], self.u[self.NumberOfSnapshots], self.vel_x[self.NumberOfSnapshots], self.vel_y[self.NumberOfSnapshots], self.vel_z[self.NumberOfSnapshots], self.dedt[self.NumberOfSnapshots])
-					print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.B[self.NumberOfSnapshots])
+					#print("\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.pos_x[self.NumberOfSnapshots], self.pos_y[self.NumberOfSnapshots], self.pos_z[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots], self.u[self.NumberOfSnapshots], self.vel_x[self.NumberOfSnapshots], self.vel_y[self.NumberOfSnapshots], self.vel_z[self.NumberOfSnapshots], self.dedt[self.NumberOfSnapshots]))
+					print("\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.B[self.NumberOfSnapshots]))
 					self.NumberOfSnapshots += 1
 		self.time.resize(self.NumberOfSnapshots)
 		self.n_gas.resize(self.NumberOfSnapshots)
@@ -213,18 +213,18 @@ class SnapshotData:
 		#self.dedt.resize(self.NumberOfSnapshots)
 
 
-		print "\n"
+		print("\n")
 		line = None
 		lineData = None
 		columnData = None
 		fData.close()
 
 	def show(self):
-		print "Number of Snapshots: {:d}".format(self.NumberOfSnapshots)
-		print "\t time (s) \t n_gas (cm^-3) \t B (G) \n"
+		print("Number of Snapshots: {:d}".format(self.NumberOfSnapshots))
+		print("\t time (s) \t n_gas (cm^-3) \t B (G) \n")
 		for i in np.arange(NumberOfSnapshots):
-			print "\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[i], self.n_gas[i],self.B[i])
-		print ''
+			print("\t {:1.2E} \t {:1.2E} \t {:1.2E}".format(self.time[i], self.n_gas[i],self.B[i]))
+		print("")
 
 ####################################################################################################
 # class which handles all the Snapshot which was also provided to the C program
@@ -253,9 +253,9 @@ class SnapshotData2:
 
 	def read_data(self,DataFileName):
 		fData = open(DataFileName)
-		print "Reading data from file '{:}'\n".format(DataFileName)
-		print "\t time (s) \t n_gas (cm^-3) \t T (K) \t B (G) \t inj \n"        
-		#print "\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t n_gas \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n"
+		print("Reading data from file '{:}'\n".format(DataFileName))
+		print("\t time (s) \t n_gas (cm^-3) \t T (K) \t B (G) \t inj \n")
+		#print("\t time \t\t pos_x \t\t pos_y \t\t pos_z \t\t n_gas \t\t u \t\t vel_x \t\t vel_y \t\t vel_z \t\t dedt \n")
 		for line in fData:
 			lineData = (line.strip()).lstrip()
 			if(lineData != ''): #ignore empty lines
@@ -266,7 +266,7 @@ class SnapshotData2:
 					self.T[self.NumberOfSnapshots]         = float(columnData[2])
 					self.B[self.NumberOfSnapshots]         = float(columnData[3])
 					self.inj[self.NumberOfSnapshots]     = int(columnData[4])
-					print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots])
+					print("\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots]))
 					self.NumberOfSnapshots += 1
 		self.time.resize(self.NumberOfSnapshots)
 		self.n_gas.resize(self.NumberOfSnapshots)
@@ -274,18 +274,18 @@ class SnapshotData2:
 		self.B.resize(self.NumberOfSnapshots)
 		self.inj.resize(self.NumberOfSnapshots)
 
-		print "\n"
+		print("\n")
 		line = None
 		lineData = None
 		columnData = None
 		fData.close()
 
 	def show(self):
-		print "Number of Snapshots: {:d}".format(self.NumberOfSnapshots)
-		print "\t time (s) \t n_gas (cm^-3) \t T (K) \t B (G) \t inj \n"        
+		print("Number of Snapshots: {:d}".format(self.NumberOfSnapshots))
+		print("\t time (s) \t n_gas (cm^-3) \t T (K) \t B (G) \t inj \n")       
 		for i in np.arange(NumberOfSnapshots):
-			print "\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots])
-		print ''
+			print("\t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:1.2E} \t {:d}".format(self.time[self.NumberOfSnapshots], self.n_gas[self.NumberOfSnapshots],self.T[self.NumberOfSnapshots], self.B[self.NumberOfSnapshots], self.inj[self.NumberOfSnapshots]))
+		print("")
 
 	
 if __name__ == "__main__":
@@ -321,7 +321,7 @@ class runErrorRelative:
 			setattr(self,var,None)
 
 	def read_data(self, runErrorFile):
-		print "Reading data from file '{:}'".format(runErrorFile)
+		print("Reading data from file '{:}'".format(runErrorFile))
 		fData = open(runErrorFile,'r')
 		self.nPoints = 0
 		for line in fData:
@@ -332,13 +332,13 @@ class runErrorRelative:
 					self.time[self.nPoints] = columnData[0]
 					self.n_gas[self.nPoints]    = columnData[1]
 					self.err[self.nPoints]    = columnData[2]
-					print '\t {:E} \t {:E} \t {:E}'.format(self.time[self.nPoints], self.n_gas[self.nPoints], self.err[self.nPoints])
+					print("\t {:E} \t {:E} \t {:E}".format(self.time[self.nPoints], self.n_gas[self.nPoints], self.err[self.nPoints]))
 					self.nPoints+=1
 		self.time.resize(self.nPoints)
 		self.n_gas.resize(self.nPoints)
 		self.err.resize(self.nPoints)
 
-		print '\n'
+		print("\n")
 		line = None
 		lineData = None
 		columnData = None
@@ -363,7 +363,7 @@ class PropertyError:
 			setattr(self,var,None)
 
 	def read_data(self, runErrorFile):
-		print "Reading data from file '{:}'".format(runErrorFile)
+		print("Reading data from file '{:}'".format(runErrorFile))
 		fData = open(runErrorFile,'r')
 		self.nPoints = 0
 		for line in fData:
@@ -375,14 +375,14 @@ class PropertyError:
 					self.del_energy[self.nPoints]    = columnData[1]
 					self.del_pressure[self.nPoints]    = columnData[2]
 					self.del_number[self.nPoints]    = columnData[2]
-					print '\t {:E} \t {:E} \t {:E}'.format(self.time[self.nPoints], self.del_energy[self.nPoints], self.del_pressure[self.nPoints], self.del_number[self.nPoints])
+					print("\t {:E} \t {:E} \t {:E}".format(self.time[self.nPoints], self.del_energy[self.nPoints], self.del_pressure[self.nPoints], self.del_number[self.nPoints]))
 					self.nPoints+=1
 		self.time.resize(self.nPoints)
 		self.del_energy.resize(self.nPoints)
 		self.del_pressure.resize(self.nPoints)
 		self.del_number.resize(self.nPoints)
 
-		print '\n'
+		print("\n")
 		line = None
 		lineData = None
 		columnData = None
@@ -406,7 +406,7 @@ class ApproxData:
 			setattr(self,var,None)
 
 	def read_data(self,approxFile):
-		print "Reading approximate solution from file '{:}'".format(approxFile)
+		print("Reading approximate solution from file '{:}'".format(approxFile))
 		fData = open(approxFile,'r')
 		for line in fData:
 			lineData = (line.strip()).lstrip()
@@ -416,13 +416,13 @@ class ApproxData:
 					self.time[self.nSnaps] = float(columnData[0])
 					self.Norm[self.nSnaps] = float(columnData[1])
 					self.Cut[self.nSnaps]  = float(columnData[2])
-					print '\t {:E} \t {:E} \t {:E}'.format(self.time[self.nSnaps], self.Norm[self.nSnaps], self.Cut[self.nSnaps])
+					print("\t {:E} \t {:E} \t {:E}".format(self.time[self.nSnaps], self.Norm[self.nSnaps], self.Cut[self.nSnaps]))
 					self.nSnaps += 1
 		self.time.resize(self.nSnaps)
 		self.Norm.resize(self.nSnaps)
 		self.Cut.resize(self.nSnaps)
 
-		print '\n'
+		print("\n")
 		line = None
 		lineData = None
 		columnData = None
@@ -435,7 +435,7 @@ class DistributionFunction:
 	def __init__(self,SnapshotDataFile,NumberOfMomentumBins):
 		self.p = np.zeros(NumberOfMomentumBins)
 		self.f = np.zeros(NumberOfMomentumBins)
-		print "Reading snapshot data from file '{:}'".format(SnapshotDataFile)
+		print("Reading snapshot data from file '{:}'".format(SnapshotDataFile))
 		fSnap = open(SnapshotDataFile,'r')
 		i = 0
 		for line in fSnap:
@@ -459,7 +459,7 @@ def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 	with open(fname,'rb') as file:
-		print "Reading snapshot data from file '{:}'".format(fname)
+		print("Reading snapshot data from file '{:}'".format(fname))
 
 		# Read the first block with id and time
 		if not(NoIdTimeHeader):
@@ -483,7 +483,7 @@ def SpectrumSnapshot(fname,  nBinsIn=None, NoIdTimeHeader=False):
 			if dummy != nBinsIn * size_d:
 				sys.exit("Block size is {:d} bytes, but expected {:d}".format(dummy, nBins * size_d))
 
-		nBins = dummy / size_d
+		nBins = dummy // size_d
 	
 		f = np.array(struct.unpack('{:d}d'.format(nBins), file.read(size_d * nBins)))
 
@@ -507,7 +507,7 @@ class cre_snapshot:
 		size_i, size_I, size_f, size_d = checkNumberEncoding()
 		with open(fname,'rb') as file:
 			if(verbose):
-				print "Reading snapshot data from file '{:}'".format(fname)
+				print("Reading snapshot data from file '{:}'".format(fname))
 
 			
 			# Header information
@@ -590,7 +590,7 @@ class OtherSolution:
 	def __init__(self,DataFile,nMax=400):
 		self.p = np.zeros(nMax)
 		self.f = np.zeros(nMax)
-		print "Reading other solution data from file '{:}'".format(DataFile)
+		print("Reading other solution data from file '{:}'".format(DataFile))
 		fData = open(DataFile,'r')
 		i = 0
 		for line in fData:
@@ -615,7 +615,7 @@ class OtherSolution:
 		
 class TracerOutput:
 	# instance variables
-	def __init__(self, fname = None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None):
+	def __init__(self, fname = None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, firstSnap=None, lastSnap=None):
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
 		self.nSnap = 0
@@ -626,18 +626,18 @@ class TracerOutput:
 		self.UnitVelocity_in_cm_per_s = 1.
 
 		if fname is not None:
-			self.read_data(fname, cgs_units, verbose, read_only_ic, specific_particles)
+			self.read_data(fname, cgs_units, verbose, read_only_ic, specific_particles, firstSnap, lastSnap)
 
 
 	def __del__(self):
 		for var in vars(self):
 			setattr(self,var,None)
 
-	def read_data(self, fname, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
+	def read_data(self, fname, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, firstSnap = None, lastSnap = None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
 		with open(fname,'rb') as f:
 			if verbose:
-				print read_only_ic
-				print "Read Arepo's tracer output from file '{}'".format(fname)
+				print("Read only initial conditions: {:}".format(read_only_ic))
+				print("Read Arepo's tracer output from file '{}'".format(fname))
 			size_i, size_I, size_f, size_d = checkNumberEncoding()
 
 			# Reading first block with unit system
@@ -655,11 +655,10 @@ class TracerOutput:
 			
 			# Reading block with data values
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
-			self.nPart = dummy / (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
+			self.nPart = dummy // (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
 			nPartInFile = self.nPart
 			self.nSnap	= 0
-			buf 	= 1				
-						
+			buf 	= 1		   					
 
 			while(buf):
 				# move pointer forward
@@ -668,7 +667,7 @@ class TracerOutput:
 					sys.exit("data not correctly enclosed 1, ")
 
 				self.nSnap += 1
-				if read_only_ic:
+				if read_only_ic or lastSnap == self.nSnap:
 					buf = False
 				else:
 					buf = f.read(size_i)
@@ -684,7 +683,7 @@ class TracerOutput:
 					# set attributes for reading a slice
 					if specific_particles.stop <= self.nPart:
 						if type(specific_particles) is int:
-							self.nPart = (specific_particles.stop - specific_particles.start) / specific_particles.step
+							self.nPart = (specific_particles.stop - specific_particles.start) // specific_particles.step
 							if (specific_particles.stop - specific_particles.start) % specific_particles.step > 0:
 								self.nPart += 1
 						else:
@@ -699,10 +698,14 @@ class TracerOutput:
 
 			# go back to the beginning of the file
 			f.seek(3*size_i + 3*size_d, 0)
+
+			if firstSnap is not None:
+				self.nSnap -= firstSnap
+		
 			buf = 0
 			if verbose:
-				print 'Number of particles: {:d}'.format(self.nPart)
-				print 'Number of snapshots: {:d}'.format(self.nSnap)
+				print("Number of particles: {:d}".format(self.nPart))
+				print("Number of snapshots: {:d}".format(self.nSnap))
 
 			if type(specific_particles) is not int:
 				# create the arrays
@@ -773,6 +776,11 @@ class TracerOutput:
 				self.injRate        = np.ndarray(self.nSnap, dtype=float)
 				self.alphaInj       = np.ndarray(self.nSnap, dtype=float)
 				self.pInj           = np.ndarray(self.nSnap, dtype=float)
+
+			if firstSnap is not None:
+				# skip some lines
+				f.seek(firstSnap * (dummy + 2*size_i), 1) 
+
 
 
 
@@ -945,14 +953,14 @@ class TracerOutput:
 
 			f.close()
 			if verbose:
-				print "Data was successfully read"
+				print("Data was successfully read")
 			
 			if cgs_units:
 				self.scale_to_cgs(verbose)
 
 	def scale_to_cgs(self, verbose=False):	
 		if verbose:
-			print "Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s)
+			print("Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
 		self.time           = np.multiply(self.time, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
 		self.TracerMass     = np.multiply(self.TracerMass, self.UnitMass_in_g)
 		self.x              = np.multiply(self.x, self.UnitLength_in_cm)
@@ -1006,7 +1014,7 @@ class TracerOutput:
 					ret.nSnap = 1
 				elif isinstance(key[1], slice):
 					start, stop, step = key[1].indices(self.nSnap)
-					ret.nSnap = (stop - start + 1)/step
+					ret.nSnap = (stop - start + 1)//step
 				else:
 					raise TypeError('Index must be int or slice, not {}'.format(type(key[1]).__name__))
 		else:
@@ -1142,7 +1150,7 @@ class TracerOutput:
 	# def getslice(self, key):
 	# 	start, stop, step = key.indices(self.nPart)
 	# 	ret = TracerOutput()
-	# 	ret.nPart = (stop - start + 1)/step
+	# 	ret.nPart = (stop - start + 1)//step
 	# 	ret.nSnap = self.nSnap
 
 	# 	# create the arrays
@@ -1286,7 +1294,7 @@ class TracerOutput:
 	# 	start, stop, step = key.indices(self.nSnap)
 	# 	ret = TracerOutput()
 	# 	ret.nPart = self.nPart
-	# 	ret.nSnap = (stop - start + 1)/step
+	# 	ret.nSnap = (stop - start + 1)//step
 
 	# 	# create the arrays
 	# 	ret.ID             = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
@@ -1384,14 +1392,14 @@ class TracerOutputOld:
 
 	def read_data(self, fname,with_cr_electrons=1):
 		with open(fname,'rb') as f:
-			print "Read Arepo's tracer output from file '{}'".format(fname)
+			print("Read Arepo's tracer output from file '{}'".format(fname))
 			size_i, size_I, size_f, size_d = checkNumberEncoding()
 		
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
 			if with_cr_electrons == 1:
-				self.nPart = (dummy - size_d) / (12 * size_f + size_i)
+				self.nPart = (dummy - size_d) // (12 * size_f + size_i)
 			else:
-				self.nPart = (dummy - size_d) / (6 * size_f)
+				self.nPart = (dummy - size_d) // (6 * size_f)
 
 			self.nSnap	= 0
 			buf 	= 1
@@ -1412,8 +1420,8 @@ class TracerOutputOld:
 			# go back to the beginning of the file
 			f.seek(size_i, 0)
 			buf = 0
-			print 'Number of particles: {:d}'.format(self.nPart)
-			print 'Number of snapshots: {:d}'.format(self.nSnap)
+			print("Number of particles: {:d}".format(self.nPart))
+			print("Number of snapshots: {:d}".format(self.nSnap))
 
 			# create the arrays    
 			self.time	= np.ndarray(self.nSnap, dtype = float)
@@ -1460,7 +1468,7 @@ class TracerOutputOld:
 
 			f.close()
 
-			print "Data was successfully read"
+			print("Data was successfully read")
 
 
 	
@@ -1731,7 +1739,7 @@ def writeInitialSpectrumFile(fname, nPart, nBins, f, sameSpectra=False):
 		file.write(struct.pack('i',nPart * nBins * size_d))
 		file.close()
 		
-		print "Wrote initial spectrum for {:d} particles with {:d} momentum bins file to '{:s}'".format(nPart, nBins, fname)
+		print("Wrote initial spectrum for {:d} particles with {:d} momentum bins file to '{:s}'".format(nPart, nBins, fname))
 
 	return 0
 
@@ -1742,7 +1750,7 @@ def readInitialSpectrumFile(fname, nPartIn=None, nBinsIn=None, sameSpectra=False
 
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 	with open(fname,'rb') as file:
-		print "Read initial spectrum for tracer particles"
+		print("Read initial spectrum for tracer particles")
 
 		# Read first information block with number of particles and momentum bins
 		dummy = int(struct.unpack('i',file.read(size_i))[0])
