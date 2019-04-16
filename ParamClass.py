@@ -655,14 +655,14 @@ class TracerOutput:
 			
 			# Reading block with data values
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
-			self.nPart = dummy // (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
+			self.nPart = dummy // (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
 			nPartInFile = self.nPart
 			self.nSnap	= 0
 			buf 	= 1		   					
 
 			while(buf):
 				# move pointer forward
-				f.seek(self.nPart * (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d), 1) 
+				f.seek(self.nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d), 1) 
 				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
 					sys.exit("data not correctly enclosed 1, ")
 
@@ -730,8 +730,6 @@ class TracerOutput:
 				self.eps_CRpShockInj  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.n_gasPreShock  = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.n_gasPostShock = np.ndarray((self.nPart, self.nSnap), dtype=float)
-				self.BpreShock      = np.ndarray((self.nPart, self.nSnap), dtype=float)
-				self.BpostShock     = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.VShock         = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.timeShockCross = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.cosTheta       = np.ndarray((self.nPart, self.nSnap), dtype=float)
@@ -765,8 +763,6 @@ class TracerOutput:
 				self.eps_CRpShockInj  = np.ndarray(self.nSnap, dtype=float)
 				self.n_gasPreShock  = np.ndarray(self.nSnap, dtype=float)
 				self.n_gasPostShock = np.ndarray(self.nSnap, dtype=float)
-				self.BpreShock      = np.ndarray(self.nSnap, dtype=float)
-				self.BpostShock     = np.ndarray(self.nSnap, dtype=float)
 				self.VShock         = np.ndarray(self.nSnap, dtype=float)
 				self.timeShockCross = np.ndarray(self.nSnap, dtype=float)
 				self.cosTheta       = np.ndarray(self.nSnap, dtype=float)
@@ -806,8 +802,6 @@ class TracerOutput:
 					self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
-					self.BpreShock[:, n]      = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-					self.BpostShock[:, n]     = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.VShock[:, n]         = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
@@ -877,12 +871,6 @@ class TracerOutput:
 					self.n_gasPostShock[n] = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
 
-					self.BpreShock[n]      = struct.unpack('f', f.read(size_f))[0]
-					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
-
-					self.BpostShock[n]     = struct.unpack('f', f.read(size_f))[0]
-					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
-
 					self.VShock[n]         = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
 
@@ -932,8 +920,6 @@ class TracerOutput:
 					self.n_gasPreShock[:, n]  = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.n_gasPostShock[:, n] = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 
-					self.BpreShock[:, n]      = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
-					self.BpostShock[:, n]     = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.VShock[:, n]         = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
@@ -978,8 +964,6 @@ class TracerOutput:
 		self.n_gasPreShock  = np.multiply(self.n_gasPreShock,  self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))	
 		self.n_gasPostShock = np.multiply(self.n_gasPostShock, self.UnitMass_in_g / (PROTONMASS * np.power(self.UnitLength_in_cm, 3)))
 
-		self.BpreShock      = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
-		self.BpostShock     = np.multiply(self.B, np.sqrt(self.UnitMass_in_g / self.UnitLength_in_cm) * self.UnitVelocity_in_cm_per_s / self.UnitLength_in_cm)
 		self.VShock         = np.multiply(self.VShock, self.UnitVelocity_in_cm_per_s)		
 		self.timeShockCross = np.multiply(self.timeShockCross, self.UnitLength_in_cm / self.UnitVelocity_in_cm_per_s)
 
@@ -1042,8 +1026,6 @@ class TracerOutput:
 		ret.eps_CRpShockInj  = self.eps_CRpShockInj.__getitem__(key)
 		ret.n_gasPreShock  = self.n_gasPreShock.__getitem__(key)
 		ret.n_gasPostShock = self.n_gasPostShock.__getitem__(key)
-		ret.BpreShock      = self.BpreShock.__getitem__(key)
-		ret.BpostShock     = self.BpostShock.__getitem__(key)
 		ret.VShock         = self.VShock.__getitem__(key)
 		ret.timeShockCross = self.timeShockCross.__getitem__(key)
 		ret.cosTheta       = self.cosTheta.__getitem__(key)
@@ -1106,8 +1088,6 @@ class TracerOutput:
 	# 		ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
 	# 		ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.BpreShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.BpostShock     = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
@@ -1134,8 +1114,6 @@ class TracerOutput:
 	# 		ret.ShockFlag[0, :]      = self.ShockFlag[key, :] 
 	# 		ret.n_gasPreShock[0, :]    = self.n_gasPreShock[key, :] 
 	# 		ret.n_gasPostShock[0, :]   = self.n_gasPostShock[key, :] 
-	# 		ret.BpreShock[0, :]      = self.BpreShock[key, :] 
-	# 		ret.BpostShock[0, :]     = self.BpostShock[key, :] 
 	# 		ret.VShock[0, :]      = self.VShock[key, :] 
 	# 		ret.timeShockCross[0, :] = self.timeShockCross[key, :] 
 	# 		ret.cosTheta[0, :]       = self.cosTheta[key, :] 
@@ -1172,8 +1150,6 @@ class TracerOutput:
 	# 	ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
 	# 	ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.BpreShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.BpostShock     = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
@@ -1203,8 +1179,6 @@ class TracerOutput:
 	# 		ret.ShockFlag[j, :]      = self.ShockFlag[i, :] 
 	# 		ret.n_gasPreShock[j, :]    = self.n_gasPreShock[i, :] 
 	# 		ret.n_gasPostShock[j, :]   = self.n_gasPostShock[i, :] 
-	# 		ret.BpreShock[j, :]      = self.BpreShock[i, :] 
-	# 		ret.BpostShock[j, :]     = self.BpostShock[i, :] 
 	# 		ret.VShock[j, :]      = self.VShock[i, :] 
 	# 		ret.timeShockCross[j, :] = self.timeShockCross[i, :] 
 	# 		ret.cosTheta[j, :]       = self.cosTheta[i, :] 
@@ -1248,8 +1222,6 @@ class TracerOutput:
 	# 		ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
 	# 		ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.BpreShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.BpostShock     = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 		ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
@@ -1277,8 +1249,6 @@ class TracerOutput:
 	# 			ret.ShockFlag[p, :]      = self.ShockFlag[p, key] 
 	# 			ret.n_gasPreShock[p, :]    = self.n_gasPreShock[p, key] 
 	# 			ret.n_gasPostShock[p, :]   = self.n_gasPostShock[p, key] 
-	# 			ret.BpreShock[p, :]      = self.BpreShock[p, key] 
-	# 			ret.BpostShock[p, :]     = self.BpostShock[p, key] 
 	# 			ret.VShock[p, :]      = self.VShock[p, key] 
 	# 			ret.timeShockCross[p, :] = self.timeShockCross[p, key] 
 	# 			ret.cosTheta[p, :]       = self.cosTheta[p, key] 
@@ -1315,8 +1285,6 @@ class TracerOutput:
 	# 	ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
 	# 	ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.BpreShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.BpostShock     = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
 	# 	ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
@@ -1347,8 +1315,6 @@ class TracerOutput:
 	# 			ret.ShockFlag[p, j]      = self.ShockFlag[p, i] 
 	# 			ret.n_gasPreShock[p, j]    = self.n_gasPreShock[p, i] 
 	# 			ret.n_gasPostShock[p, j]   = self.n_gasPostShock[p, i] 
-	# 			ret.BpreShock[p, j]      = self.BpreShock[p, i] 
-	# 			ret.BpostShock[p, j]     = self.BpostShock[p, i] 
 	# 			ret.VShock[p, j]      = self.VShock[p, i] 
 	# 			ret.timeShockCross[p, j] = self.timeShockCross[p, i] 
 	# 			ret.cosTheta[p, j]       = self.cosTheta[p, i] 
@@ -1516,7 +1482,7 @@ def checkNumberEncoding():
 ####################################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
-def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, eps_photon, ShockFlag, eps_CRpShockInj, n_gasPreShock, n_gasPostShock, BpreShock, BpostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
+def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, eps_photon, ShockFlag, eps_CRpShockInj, n_gasPreShock, n_gasPostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
 	
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 
@@ -1569,12 +1535,6 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 	if n_gasPostShock.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('n_gasPostShock', n_gasPostShock.shape, nPart, nSnap))
 
-	if BpreShock.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('BpreShock', BpreShock.shape, nPart, nSnap))
-
-	if BpostShock.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('BpostShock', BpostShock.shape, nPart, nSnap))
-
 	if VShock.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('VShock', VShock.shape, nPart, nSnap))
 
@@ -1609,7 +1569,7 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 		f.write(struct.pack('i',dummy))
 
 
-		dummy = nPart * (2 * size_i + 2 * size_I + 20 * size_f + 1 * size_d)
+		dummy = nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
 		f.write(struct.pack('i',dummy))
 
 		for s in np.arange(nSnap):
@@ -1662,12 +1622,6 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
 			float_buffer[:] = n_gasPostShock[:, s]
-			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
-
-			float_buffer[:] = BpreShock[:, s]
-			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
-
-			float_buffer[:] = BpostShock[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
 			float_buffer[:] = VShock[:, s]
