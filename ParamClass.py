@@ -9,10 +9,15 @@ from Physics import *
 # class which handles the parameters given via files to the C program
 # parameters are needed for calculating the plots
 class CRelectronParameters:
-	# instance variables
+	"""Read the parameter file for a CREST simulation"""
 
 	def __init__(self,ParameterFileName = None, RunID = None, verbose = False):
-		# need to set dummy values as these determine the types
+		"""
+		Initialize all possible variables which can be defined by the parameter file.
+		Note that it contains some legacy variables.
+		If a path to the parameter file is given the file will be read in
+		"""
+
 		self.Run_ID                      = 0
 
 		# General Settings for I/O
@@ -68,6 +73,11 @@ class CRelectronParameters:
 		self.ShockParamA                 = 0.
 		self.ShockParamB                 = 0.
 		self.ShockParamC                 = 0.
+		self.zeta_pe                     = 0.
+		self.obliquity_critAngle         = -1.
+		self.obliquity_width             = -1.
+		self.obliquity_minEff            = -1.
+		self.obliquity_maxEff            = -1.
 
 		# new parameters with tracer data
 		self.FunctionValueChop           = 1.e-30
@@ -732,7 +742,7 @@ class TracerOutput:
 				self.n_gasPostShock = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.VShock         = np.ndarray((self.nPart, self.nSnap), dtype=float)
 				self.timeShockCross = np.ndarray((self.nPart, self.nSnap), dtype=float)
-				self.cosTheta       = np.ndarray((self.nPart, self.nSnap), dtype=float)
+				self.theta       = np.ndarray((self.nPart, self.nSnap), dtype=float)
 
 				# parameters for electron injection (apart from DSA given above)
 				self.CReInjection   = np.ndarray((self.nPart, self.nSnap), dtype=int)
@@ -765,7 +775,7 @@ class TracerOutput:
 				self.n_gasPostShock = np.ndarray(self.nSnap, dtype=float)
 				self.VShock         = np.ndarray(self.nSnap, dtype=float)
 				self.timeShockCross = np.ndarray(self.nSnap, dtype=float)
-				self.cosTheta       = np.ndarray(self.nSnap, dtype=float)
+				self.theta       = np.ndarray(self.nSnap, dtype=float)
 
 				# parameters for electron injection (apart from DSA given above)
 				self.CReInjection   = np.ndarray(self.nSnap, dtype=int)
@@ -804,7 +814,7 @@ class TracerOutput:
 
 					self.VShock[:, n]         = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 					self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-					self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+					self.theta[:, n]          = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 
 					self.CReInjection[:, n]   = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
 					self.injRate[:, n]        = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
@@ -877,7 +887,7 @@ class TracerOutput:
 					self.timeShockCross[n] = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_f, 1)
 
-					self.cosTheta[n]       = struct.unpack('f', f.read(size_f))[0]
+					self.theta[n]       = struct.unpack('f', f.read(size_f))[0]
 					f.seek((nPartInFile - pos - 1) * size_f + pos * size_i, 1)
 
 					self.CReInjection[n]   = struct.unpack('i', f.read(size_i))[0]
@@ -922,7 +932,7 @@ class TracerOutput:
 
 					self.VShock[:, n]         = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 					self.timeShockCross[:, n] = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
-					self.cosTheta[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
+					self.theta[:, n]       = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
 
 					self.CReInjection[:, n]   = struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile))[specific_particles]
 					self.injRate[:, n]        = struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile))[specific_particles]
@@ -1028,7 +1038,7 @@ class TracerOutput:
 		ret.n_gasPostShock = self.n_gasPostShock.__getitem__(key)
 		ret.VShock         = self.VShock.__getitem__(key)
 		ret.timeShockCross = self.timeShockCross.__getitem__(key)
-		ret.cosTheta       = self.cosTheta.__getitem__(key)
+		ret.theta       = self.theta.__getitem__(key)
 
 		# parameters for electron injection (apart from DSA given above)
 		ret.CReInjection   = self.CReInjection.__getitem__(key)
@@ -1038,300 +1048,6 @@ class TracerOutput:
 
 		return ret
 
-			
-		
-		
-			
-	# 	a = self.ShockFlag.__getitem__(key)
-	# 	#return a
-
-	# 	if isinstance(key, int):
-	# 		return self.getitem(key)
-	# 	elif isinstance(key, slice):
-	# 		return self.getslice(key)
-	# 	elif isinstance(key, tuple):
-	# 		if len(key) > 2:
-	# 			raise TypeError('Tuple Index must be of length 2, not {}'.format(len(key)))
-	# 		else:
-	# 			ret = self.__getitem__(key[0])
-	# 			if isinstance(key[1], int):
-	# 				return ret.getsnapitem(key[1])
-	# 			elif isinstance(key[1], slice):
-	# 				return ret.getsnapslice(key[1])
-	# 			else:
-	# 				raise TypeError('Index must be int, not {}'.format(type(key[1]).__name__))
-	# 	else:
-	# 		raise TypeError('Index must be int, not {}'.format(type(key).__name__))
-
-	# def getitem(self, key):
-	# 	if key < self.nPart:
-	# 		ret = TracerOutput()
-	# 		ret.nPart = 1
-	# 		ret.nSnap = self.nSnap
-
-	# 		# create the arrays
-	# 		ret.ID             = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 		ret.time           = np.ndarray((ret.nPart, ret.nSnap), dtype = float) # time or scale parameter
-
-	# 		ret.x	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.y	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.z	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.n_gas	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.temp	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.u_therm        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 		# parameters for cooling
-	# 		ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 		# parameters for diffusive shock acceleration
-	# 		ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 		ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-			
-	# 		# parameters for electron injection (apart from DSA given above)
-	# 		ret.CReInjection   = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 		ret.injRate        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.alphaInj       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.pInj           = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 		ret.ID[0, :]             = self.ID[key, :]
-	# 		ret.time[0, :]		     = self.time[key, :]
-
-	# 		ret.x[0, :]		         = self.x[key, :] 
-	# 		ret.y[0, :]		         = self.y[key, :] 
-	# 		ret.z[0, :]		         = self.z[key, :] 
-	# 		ret.n_gas[0, :]		     = self.n_gas[key, :] 
-	# 		ret.temp[0, :]		     = self.temp[key, :] 
-	# 		ret.u_therm[0, :]	     = self.u_therm[key, :] 
-
-	# 		ret.B[0, :]		         = self.B[key, :] 
-	# 		ret.eps_photon[0, :]       = self.eps_photon[key, :] 
-
-	# 		ret.ShockFlag[0, :]      = self.ShockFlag[key, :] 
-	# 		ret.n_gasPreShock[0, :]    = self.n_gasPreShock[key, :] 
-	# 		ret.n_gasPostShock[0, :]   = self.n_gasPostShock[key, :] 
-	# 		ret.VShock[0, :]      = self.VShock[key, :] 
-	# 		ret.timeShockCross[0, :] = self.timeShockCross[key, :] 
-	# 		ret.cosTheta[0, :]       = self.cosTheta[key, :] 
-
-	# 		ret.CReInjection[0, :]   = self.CReInjection[key, :] 
-	# 		ret.injRate[0, :]        = self.injRate[key, :] 
-	# 		ret.alphaInj[0, :]       = self.alphaInj[key, :] 
-	# 		ret.pInj[0, :]           = self.pInj[key, :] 
-
-	# 		return ret
-
-	# def getslice(self, key):
-	# 	start, stop, step = key.indices(self.nPart)
-	# 	ret = TracerOutput()
-	# 	ret.nPart = (stop - start + 1)//step
-	# 	ret.nSnap = self.nSnap
-
-	# 	# create the arrays
-	# 	ret.ID             = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 	ret.time           = np.ndarray((ret.nPart, ret.nSnap), dtype = float) # time or scale parameter
-
-	# 	ret.x	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.y	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.z	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.n_gas	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.temp	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.u_therm        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# parameters for cooling
-	# 	ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# parameters for diffusive shock acceleration
-	# 	ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 	ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# parameters for electron injection (apart from DSA given above)
-	# 	ret.CReInjection   = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 	ret.injRate        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.alphaInj       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.pInj           = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# Copy now the data
-	# 	j = 0
-	# 	for i in np.arange(start, stop, step):
-	# 		ret.ID[j, :]             = self.ID[i, :]
-	# 		ret.time[j, :]		     = self.time[i, :]
-
-	# 		ret.x[j, :]		         = self.x[i, :] 
-	# 		ret.y[j, :]		         = self.y[i, :] 
-	# 		ret.z[j, :]		         = self.z[i, :] 
-	# 		ret.n_gas[j, :]		     = self.n_gas[i, :] 
-	# 		ret.temp[j, :]		     = self.temp[i, :] 
-	# 		ret.u_therm[j, :]	     = self.u_therm[i, :] 
-
-	# 		ret.B[j, :]		         = self.B[i, :] 
-	# 		ret.eps_photon[j, :]       = self.eps_photon[i, :] 
-
-	# 		ret.ShockFlag[j, :]      = self.ShockFlag[i, :] 
-	# 		ret.n_gasPreShock[j, :]    = self.n_gasPreShock[i, :] 
-	# 		ret.n_gasPostShock[j, :]   = self.n_gasPostShock[i, :] 
-	# 		ret.VShock[j, :]      = self.VShock[i, :] 
-	# 		ret.timeShockCross[j, :] = self.timeShockCross[i, :] 
-	# 		ret.cosTheta[j, :]       = self.cosTheta[i, :] 
-
-	# 		ret.CReInjection[j, :]   = self.CReInjection[i, :] 
-	# 		ret.injRate[j, :]        = self.injRate[i, :] 
-	# 		ret.alphaInj[j, :]       = self.alphaInj[i, :] 
-	# 		ret.pInj[j, :]           = self.pInj[i, :]
-
-	# 		j += 1
-
-	# 	j = None
-	# 	start = None
-	# 	stop = None
-	# 	step = None
-
-	# 	return ret
-
-	# def getsnapitem(self, key):
-	# 	if key < self.nSnap:
-	# 		ret = TracerOutput()
-	# 		ret.nPart = self.nPart
-	# 		ret.nSnap = 1
-
-	# 		# create the arrays
-	# 		ret.ID             = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 		ret.time           = np.ndarray((ret.nPart, ret.nSnap), dtype = float) # time or scale parameter
-
-	# 		ret.x	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.y	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.z	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.n_gas	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.temp	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.u_therm        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 		# parameters for cooling
-	# 		ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 		# parameters for diffusive shock acceleration
-	# 		ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 		ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-			
-	# 		# parameters for electron injection (apart from DSA given above)
-	# 		ret.CReInjection   = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 		ret.injRate        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.alphaInj       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 		ret.pInj           = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 		for p in np.arange(ret.nPart):
-	# 			ret.ID[p, :]             = self.ID[p, key]
-	# 			ret.time[p, :]		     = self.time[p, key]
-
-	# 			ret.x[p, :]		         = self.x[p, key] 
-	# 			ret.y[p, :]		         = self.y[p, key] 
-	# 			ret.z[p, :]		         = self.z[p, key] 
-	# 			ret.n_gas[p, :]		     = self.n_gas[p, key] 
-	# 			ret.temp[p, :]		     = self.temp[p, key] 
-	# 			ret.u_therm[p, :]	     = self.u_therm[p, key] 
-
-	# 			ret.B[p, :]		         = self.B[p, key] 
-	# 			ret.eps_photon[p, :]       = self.eps_photon[p, key] 
-
-	# 			ret.ShockFlag[p, :]      = self.ShockFlag[p, key] 
-	# 			ret.n_gasPreShock[p, :]    = self.n_gasPreShock[p, key] 
-	# 			ret.n_gasPostShock[p, :]   = self.n_gasPostShock[p, key] 
-	# 			ret.VShock[p, :]      = self.VShock[p, key] 
-	# 			ret.timeShockCross[p, :] = self.timeShockCross[p, key] 
-	# 			ret.cosTheta[p, :]       = self.cosTheta[p, key] 
-
-	# 			ret.CReInjection[p, :]   = self.CReInjection[p, key] 
-	# 			ret.injRate[p, :]        = self.injRate[p, key] 
-	# 			ret.alphaInj[p, :]       = self.alphaInj[p, key] 
-	# 			ret.pInj[p, :]           = self.pInj[p, key] 
-
-	# 		return ret
-
-	# def getsnapslice(self, key):
-	# 	start, stop, step = key.indices(self.nSnap)
-	# 	ret = TracerOutput()
-	# 	ret.nPart = self.nPart
-	# 	ret.nSnap = (stop - start + 1)//step
-
-	# 	# create the arrays
-	# 	ret.ID             = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 	ret.time           = np.ndarray((ret.nPart, ret.nSnap), dtype = float) # time or scale parameter
-
-	# 	ret.x	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.y	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.z	            = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.n_gas	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.temp	        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.u_therm        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# parameters for cooling
-	# 	ret.B			    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.eps_photon       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# parameters for diffusive shock acceleration
-	# 	ret.ShockFlag      = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 	ret.n_gasPreShock    = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.n_gasPostShock   = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.VShock      = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.timeShockCross = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.cosTheta       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	# parameters for electron injection (apart from DSA given above)
-	# 	ret.CReInjection   = np.ndarray((ret.nPart, ret.nSnap), dtype=int)
-	# 	ret.injRate        = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.alphaInj       = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-	# 	ret.pInj           = np.ndarray((ret.nPart, ret.nSnap), dtype=float)
-
-	# 	for p in np.arange(ret.nPart):
-	# 		# Copy now the data
-	# 		j = 0
-	# 		for i in np.arange(start, stop, step):
-	# 			ret.ID[p, j]             = self.ID[p, i]
-	# 			ret.time[p, j]		     = self.time[p, i]
-
-	# 			ret.x[p, j]		         = self.x[p, i] 
-	# 			ret.y[p, j]		         = self.y[p, i] 
-	# 			ret.z[p, j]		         = self.z[p, i] 
-	# 			ret.n_gas[p, j]		     = self.n_gas[p, i] 
-	# 			ret.temp[p, j]		     = self.temp[p, i] 
-	# 			ret.u_therm[p, j]	     = self.u_therm[p, i] 
-
-	# 			ret.B[p, j]		         = self.B[p, i] 
-	# 			ret.eps_photon[p, j]       = self.eps_photon[p, i] 
-
-	# 			ret.ShockFlag[p, j]      = self.ShockFlag[p, i] 
-	# 			ret.n_gasPreShock[p, j]    = self.n_gasPreShock[p, i] 
-	# 			ret.n_gasPostShock[p, j]   = self.n_gasPostShock[p, i] 
-	# 			ret.VShock[p, j]      = self.VShock[p, i] 
-	# 			ret.timeShockCross[p, j] = self.timeShockCross[p, i] 
-	# 			ret.cosTheta[p, j]       = self.cosTheta[p, i] 
-
-	# 			ret.CReInjection[p, j]   = self.CReInjection[p, i] 
-	# 			ret.injRate[p, j]        = self.injRate[p, i] 
-	# 			ret.alphaInj[p, j]       = self.alphaInj[p, i] 
-	# 			ret.pInj[p, j]           = self.pInj[p, i] 
-	# 			j += 1
-
-	# 	j = None
-	# 	start = None
-	# 	stop = None
-	# 	step = None
-
-	# 	return ret
-		
 
 
 
@@ -1482,7 +1198,7 @@ def checkNumberEncoding():
 ####################################################################################################
 # Function for writing out the tracer data in arepostyle
 # returns 0 if everything is alright
-def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, eps_photon, ShockFlag, eps_CRpShockInj, n_gasPreShock, n_gasPostShock, VShock, timeShockCross, cosTheta, CReInjection, injRate, alphaInj, pInj):
+def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, UnitVelocity_in_cm_per_s, ID, time, ParentCellID, TracerMass, x, y, z, n_gas, temp, u_therm, B, eps_photon, ShockFlag, eps_CRpShockInj, n_gasPreShock, n_gasPostShock, VShock, timeShockCross, theta, CReInjection, injRate, alphaInj, pInj):
 	
 	size_i, size_I, size_f, size_d = checkNumberEncoding()
 
@@ -1541,8 +1257,8 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 	if timeShockCross.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('timeShockCross', timeShockCross.shape, nPart, nSnap))
 
-	if cosTheta.shape != (nPart, nSnap):
-		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('cosTheta', cosTheta.shape, nPart, nSnap))
+	if theta.shape != (nPart, nSnap):
+		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('theta', theta.shape, nPart, nSnap))
 
 	if CReInjection.shape != (nPart, nSnap):
 		sys.exit("Dimensions error: shape of '{:s}' is {:s}, expected is ({:d}, {:d})".format('CReInjection', CReInjection.shape, nPart, nSnap))
@@ -1630,7 +1346,7 @@ def writeTracerArepo(fileName, nSnap, nPart, UnitLength_in_cm, UnitMass_in_g, Un
 			float_buffer[:] = timeShockCross[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
-			float_buffer[:] = cosTheta[:, s]
+			float_buffer[:] = theta[:, s]
 			f.write(struct.pack('{:d}f'.format(nPart), *float_buffer))
 
 			# parameters for electron injection (apart from DSA given above)
