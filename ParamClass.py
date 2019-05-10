@@ -154,7 +154,75 @@ class CRelectronParameters:
 
 
 
+####################################################################################################
+# class which handles the parameters given via files to the C program
+# parameters are needed for calculating the plots
+class ArepoParameters:
+	"""Read the parameter file for AREPO simulation"""
 
+	def __init__(self, ParameterFileName = None, verbose = False):
+		# Unit system
+		self.UnitLength_in_cm = 3.085678e18
+		self.UnitMass_in_g = 1.989e33
+		self.UnitVelocity_in_cm_per_s = 1.e5
+		
+		if ParameterFileName is not None:
+			self.read_data(ParameterFileName, verbose)
+
+	def __del__(self):
+		for var in vars(self):
+			setattr(self,var,None)
+
+	def show(self):
+		for var in vars(self):
+			if type(getattr(self, var)) is int:
+				print("{:25} {:d}".format(var,getattr(self,var)))
+			if type(getattr(self, var)) is float:
+				print("{:25} {:.5e}".format(var,getattr(self,var)))
+			if type(getattr(self, var)) is str:
+				print("{:25} {:}".format(var,getattr(self,var)))
+	
+	# read in the parameter file and set the private class variables accordingly
+	def read_data(self,ParameterFileName, verbose = False):
+		fParam = open(ParameterFileName,'r')
+		if verbose:
+			print("Reading parameters from file '{:}'\n".format(ParameterFileName))
+		for line in fParam:
+			lineParam = (line.strip()).lstrip()
+			
+			# ignore lines beginning with a '%' sign
+			if(lineParam != ''):
+				if(lineParam[0] != '%'):
+					columnParam = line.split()
+					# only take lines which are of the following format: ParameterTag Space Value
+					if(len(columnParam) == 2):
+						# loop over all variables to find the one corresponding to the one read from the parameter fiel
+						for var in vars(self):
+							if(var == columnParam[0]):
+								if type(getattr(self, var)) is int:
+									setattr(self,var,int(columnParam[1]))
+									if verbose:
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
+									continue
+								elif type(getattr(self, var)) is float:
+									setattr(self,var,float(columnParam[1]))
+									if verbose:
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
+									continue
+								elif type(getattr(self, var)) is str:
+									setattr(self,var,columnParam[1])
+									if verbose:
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
+									continue
+		#if self.OutputDir[-1] != '/':
+		#	self.OutputDir += '/'
+		if verbose:
+			print("\n")
+
+		line = None
+		lineParam = None
+		columnParam = None
+		fParam.close()
 
 
 
