@@ -165,6 +165,9 @@ class ArepoParameters:
 		self.UnitLength_in_cm = 3.085678e18
 		self.UnitMass_in_g = 1.989e33
 		self.UnitVelocity_in_cm_per_s = 1.e5
+
+		self.OutputDir = ''
+		self.SnapshotFileBase = ''
 		
 		if ParameterFileName is not None:
 			self.read_data(ParameterFileName, verbose)
@@ -201,23 +204,20 @@ class ArepoParameters:
 							if(var == columnParam[0]):
 								if type(getattr(self, var)) is int:
 									setattr(self,var,int(columnParam[1]))
-									if verbose:
-										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
 									continue
 								elif type(getattr(self, var)) is float:
 									setattr(self,var,float(columnParam[1]))
-									if verbose:
-										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
 									continue
 								elif type(getattr(self, var)) is str:
 									setattr(self,var,columnParam[1])
-									if verbose:
-										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
 									continue
-		#if self.OutputDir[-1] != '/':
-		#	self.OutputDir += '/'
+		
+		if self.OutputDir[-1] != '/':
+			self.OutputDir += '/'
 		if verbose:
-			print("\n")
+			print("")
+			self.show()
+			print("")
 
 		line = None
 		lineParam = None
