@@ -715,7 +715,7 @@ class TracerOutput:
 
 	
 	# instance variables
-	def __init__(self, fname = None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, firstSnap=None, lastSnap=None, specific_fields=None):
+	def __init__(self, fname = None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, firstSnap=None, lastSnap=None, specific_fields=None):
 		"""
 		Initialize an instance of the TracerOutput.
 
@@ -749,14 +749,22 @@ class TracerOutput:
 		self._var_dtype = None
 		self._var_store = None
 		self._var_cgs_factors = None
+		self._version = None # current default version
+		self._traceroutput_tracersize = None
+		self._traceroutput_headersize = None
 
 		if fname is not None:
-			self.read_data(fname, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic, specific_particles=specific_particles, firstSnap=firstSnap, lastSnap=lastSnap, specific_fields=specific_fields)
+			self.read_data(fname, version=version, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic, specific_particles=specific_particles, firstSnap=firstSnap, lastSnap=lastSnap, specific_fields=specific_fields)
 
 	@property
 	def var_name(self):
 		""" List of names of the variables which are in the file. Variables are stored if corresponding value of var_store is True. """
 		return self._var_name
+
+	@property
+	def version(self):
+		""" List of names of the variables which are in the file. Variables are stored if corresponding value of var_store is True. """
+		return self._version
 
 	@property
 	def var_dtype(self):
@@ -773,39 +781,99 @@ class TracerOutput:
 		""" List of cgs conversion factors """
 		return self._var_cgs_factors
 
-	def read_data(self, fname, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, firstSnap = None, lastSnap = None, specific_fields=None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
+	def read_data(self, fname, version=None, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, firstSnap = None, lastSnap = None, specific_fields=None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
 		with open(fname,'rb') as f:
 			if verbose:
 				print("Read only initial conditions: {:}".format(read_only_ic))
 				print("Read Arepo's tracer output from file '{}'".format(fname))
 			size_i, size_I, size_f, size_d = checkNumberEncoding()
 
-			# Reading first block with unit system
-			dummy = int(struct.unpack('i',f.read(size_i))[0])
-			if dummy != 3 * size_d:
-				sys.exit("Expected 3 double values at beginning, ")
 
-			self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
+			# Version dependend configurati
+			# we need to make sure that old simulations can be read in
+			# python tool for tracer output conversion??
+			
+
+			
+			# definitions 
+
+			# Reading first block with unit system
+			self._traceroutput_headersize = int(struct.unpack('i',f.read(size_i))[0])
+			if self._traceroutput_headersize == 3 * size_d:
+
+				print("Warning: Old tracer output, data equivalent to version '2019-01'")
+				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
+				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
+				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
+
+				# Hard coded to guarantee readability of old tracer output files
+				self._version = 201901
+				f.seek(size_i, 1) # jump to beginning of next block to get extra information
+				self._traceroutput_tracersize = 2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d
+				self.nPart = int(struct.unpack('i',f.read(size_i))[0]) // self._traceroutput_tracersize
+				f.seek( -2 * size_i, 1) # jump back to previous position after the unit block
+				
+							
+			elif self._traceroutput_headersize == 3 * size_d + 3 * size_i:
+
+				self._version                 = struct.unpack('i', f.read(size_i))[0]
+				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
+				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
+				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
+				self.nPart                    = struct.unpack('i', f.read(size_i))[0]
+				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
+
+			else:
+							
+				sys.exit("Expected header block with size of 3 doubles (old style) or 3 doubles plus 3 integers.")
+
+			if  int(struct.unpack('i', f.read(size_i))[0]) != self._traceroutput_headersize:
+				sys.exit("Expected header block with size of 3 doubles (old style) or 3 doubles plus 3 integers.")
+
 			L = self.UnitLength_in_cm
-			self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
 			M = self.UnitMass_in_g
-			self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
 			V = self.UnitVelocity_in_cm_per_s
 
-			if  int(struct.unpack('i', f.read(size_i))[0]) != dummy:
-				sys.exit("Expected 3 double values at beginning, ")
+
+			# names of all possible variables
+			# for better readability: new line after 5 elements
+			# the order of the variables has to be same as in the file
+
+
+			if self._version == 201901:
+				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
+							 'y', 'z', 'n_gas', 'temp', 'u_therm',\
+							 'B', 'eps_photon', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',\
+							 'n_gasPostShock', 'VShock', 'timeShockCross', 'theta', 'CReInjection',\
+							 'injRate', 'alphaInj', 'pInj']
+
+				# types of the variable
+				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
+							 np.float32, np.float32, np.float32, np.float32, np.float32,\
+							 np.float32, np.float32, np.int32,   np.float32, np.float32,\
+							 np.float32, np.float32, np.float32, np.float32, np.int32,\
+							 np.float32, np.float32, np.float32]
+
+				# cgs scaling of the variable
+				self._var_cgs_factor = [1, L/V, 1, M, L,\
+										L, L, M / (PROTONMASS * L**3), V**2, V**2,\
+										np.sqrt(M * V**2 / L**3), M * V**2 / L**3, 1, M * V**2 / L**3,  M / (PROTONMASS * L**3),\
+										M / (PROTONMASS * L**3), V, L/V, 1., 1,\
+										V/L, 1., 1.]
+			else:
+				sys.exit("Version '{:d}-{:d}' not supported or implemented!".format(self._version // 100, self._version % 100))
+
 			
 			
 			# Reading block with data values
 			dummy = int(struct.unpack('i',f.read(size_i))[0])
-			self.nPart = dummy // (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d)
 			nPartInFile = self.nPart
 			self.nSnap	= 0
-			buf 	= 1		   					
-
+			buf 	= 1 #if buf > 0 or True next block will be read		   					
+ 
 			while(buf):
 				# move pointer forward
-				f.seek(self.nPart * (2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d), 1) 
+				f.seek(self.nPart * self._traceroutput_tracersize, 1) 
 				if  int(struct.unpack('i',f.read(size_i))[0]) != dummy:
 					sys.exit("data not in block #{:i} not correctly enclosed".format(self.nSnap))
 
@@ -822,7 +890,7 @@ class TracerOutput:
 					self.nPart = len(np.arange(self.nPart)[specific_particles])
 
 			# go back to the beginning of the file
-			f.seek(3*size_i + 3*size_d, 0)
+			f.seek(3*size_i + self._traceroutput_headersize, 0)
 
 			if firstSnap is not None:
 				self.nSnap -= firstSnap
@@ -831,30 +899,6 @@ class TracerOutput:
 			if verbose:
 				print("Number of particles: {:d}".format(self.nPart))
 				print("Number of snapshots: {:d}".format(self.nSnap))
-
-
-			# names of all possible variables
-			# for better readability: new line after 5 elements
-			# the order of the variables has to be same as in the file
-			self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
-						 'y', 'z', 'n_gas', 'temp', 'u_therm',\
-						 'B', 'eps_photon', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',\
-						 'n_gasPostShock', 'VShock', 'timeShockCross', 'theta', 'CReInjection',\
-						 'injRate', 'alphaInj', 'pInj']
-
-			# types of the variable
-			self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
-						 np.float32, np.float32, np.float32, np.float32, np.float32,\
-						 np.float32, np.float32, np.int32,   np.float32, np.float32,\
-						 np.float32, np.float32, np.float32, np.float32, np.int32,\
-						 np.float32, np.float32, np.float32]
-
-			# cgs scaling of the variable
-			self._var_cgs_factor = [1, L/V, 1, M, L,\
-									L, L, M / (PROTONMASS * L**3), V**2, V**2,\
-									np.sqrt(M * V**2 / L**3), M * V**2 / L**3, 1, M * V**2 / L**3,  M / (PROTONMASS * L**3),\
-									M / (PROTONMASS * L**3), V, L/V, 1., 1,\
-									V/L, 1., 1.]
 
 			if len(self._var_name) != len(self._var_dtype) or len(self._var_name) != len(self._var_cgs_factor):
 				sys.exit("Arrays of variable names and types need to have the same length")
@@ -1104,6 +1148,66 @@ class TracerOutput:
 
 		return ret
 
+#### Function to convert legacy tracer output
+def ConvertTracerOutput(fname):
+	with open(fname, 'rb') as file_in:
+		size_i, size_I, size_f, size_d = checkNumberEncoding()
+
+		# Reading first block with unit system
+		traceroutput_headersize = int(struct.unpack('i',file_in.read(size_i))[0])
+		if traceroutput_headersize == 3 * size_d:
+			print("Converting tracer output to equivalent version '2019-01'")
+			UnitLength_in_cm         = struct.unpack('d', file_in.read(size_d))[0]
+			UnitMass_in_g            = struct.unpack('d', file_in.read(size_d))[0]
+			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
+
+	
+			version = 201901
+			if struct.unpack('i', file_in.read(size_i))[0] != traceroutput_headersize:
+				sys.exit("Expected header block with size of 3 doubles")
+
+			# now change to new traceroutput_headersize
+			traceroutput_headersize = 3 * size_i + 3 * size_d
+				
+			traceroutput_tracersize = 2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d
+			dummy = int(struct.unpack('i',file_in.read(size_i))[0]) 
+			
+			nPart = dummy // traceroutput_tracersize
+			traceroutput_tracerblocksize = traceroutput_tracersize * nPart
+
+		else:
+			dummy = 0
+			sys.exit("Cannot convert this version")
+
+		# write the new file
+		file_out = open(fname[:-4] + "_new.dat", "xb")
+
+		# header block
+		file_out.write(struct.pack('i', 3 * size_i + 3 * size_d))
+		file_out.write(struct.pack('i', version))
+		file_out.write(struct.pack('d', UnitLength_in_cm))
+		file_out.write(struct.pack('d', UnitMass_in_g))
+		file_out.write(struct.pack('d', UnitVelocity_in_cm_per_s))
+		file_out.write(struct.pack('i', nPart))
+		file_out.write(struct.pack('i', traceroutput_tracersize))
+		file_out.write(struct.pack('i', traceroutput_headersize))
+
+		# tracer particle blocks
+		buf = 1 #if buf > 0 or True next block will be read		   					
+		while(buf):
+
+			file_out.write(struct.pack('i', traceroutput_tracersize * nPart)) # starting integer
+			file_out.write(file_in.read(traceroutput_tracerblocksize)) # data block
+			file_out.write(struct.pack('i', traceroutput_tracersize * nPart)) # closing integer
+
+			if  int(struct.unpack('i',file_in.read(size_i))[0]) != dummy:
+					sys.exit("data not correctly enclosed")
+
+			buf = file_in.read(size_i) # closing integer of one big block
+
+		file_out.close()
+		
+		
 			
 
 # ####################################################################################################
