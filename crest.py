@@ -249,7 +249,7 @@ class ArepoTracerOutput:
 				# Hard coded to guarantee readability of old tracer output files
 				self._version = 201901
 				f.seek(size_i, 1) # jump to beginning of next block to get extra information
-				self._traceroutput_tracersize = 2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d
+				self._traceroutput_tracersize = 2 * size_i + 2 * size_I + 17 * size_f + 1 * size_d
 				self.nPart = int(struct.unpack('i',f.read(size_i))[0]) // self._traceroutput_tracersize
 				f.seek( -2 * size_i, 1) # jump back to previous position after the unit block
 				
@@ -282,21 +282,21 @@ class ArepoTracerOutput:
 
 			if self._version == 201901:
 				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
-							 'y', 'z', 'n_gas', 'temp', 'u_therm',\
+							 'y', 'z', 'n_gas', 'u_therm',\
 							 'B', 'eps_photon', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',\
 							 'n_gasPostShock', 'VShock', 'timeShockCross', 'theta', 'CReInjection',\
 							 'injRate', 'alphaInj', 'pInj']
 
 				# types of the variable
 				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.float32, np.float32,\
+							 np.float32, np.float32, np.float32, np.float32,\
 							 np.float32, np.float32, np.int32,   np.float32, np.float32,\
 							 np.float32, np.float32, np.float32, np.float32, np.int32,\
 							 np.float32, np.float32, np.float32]
 
 				# cgs scaling of the variable
 				self._var_cgs_factor = [1, L/V, 1, M, L,\
-										L, L, M / (PROTONMASS * L**3), V**2, V**2,\
+										L, L, M / (PROTONMASS * L**3), V**2,\
 										np.sqrt(M * V**2 / L**3), M * V**2 / L**3, 1, M * V**2 / L**3,  M / (PROTONMASS * L**3),\
 										M / (PROTONMASS * L**3), V, L/V, 1., 1,\
 										V/L, 1., 1.]
