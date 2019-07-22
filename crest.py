@@ -374,6 +374,19 @@ class ArepoTracerOutput:
 				print("Read Arepo's tracer output from file '{}'".format(file_name))
 			size_i, size_I, size_f, size_d = check_encoding()
 
+			def blocksize(type_arr): 
+				def typesize(type_str): 
+					if type_str == np.int32: 
+						return size_i 
+					elif type_str == np.uint32: 
+						return size_I 
+					elif type_str == np.float32: 
+						return size_f 
+					elif type_str == np.float64: 
+						return size_d 
+					else: 
+						sys.exit("error") 
+				return np.sum(np.array([typesize(type_str) for type_str in type_arr])) 
 
 			# Version dependend configurati
 			# we need to make sure that old simulations can be read in
@@ -428,27 +441,60 @@ class ArepoTracerOutput:
 
 			if self._version == 201901:
 				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
-							 'y', 'z', 'n_gas', 'u_therm',\
-							 'B', 'eps_photon', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',\
-							 'n_gasPostShock', 'VShock', 'timeShockCross', 'theta', 'CReInjection',\
-							 'injRate', 'alphaInj', 'pInj']
+							 'y', 'z', 'n_gas', 'u_therm', 'B',\
+							 'eps_photon', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock', 'n_gasPostShock',\
+							 'VShock', 'timeShockCross', 'theta', 'CReInjection', 'injRate',\
+							 'alphaInj', 'pInj']
 
 				# types of the variable
 				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.float32,\
-							 np.float32, np.float32, np.int32,   np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.float32, np.int32,\
-							 np.float32, np.float32, np.float32]
+							 np.float32, np.float32, np.float32, np.float32, np.float32,\
+							 np.float32, np.int32,   np.float32, np.float32, np.float32,\
+							 np.float32, np.float32, np.float32, np.int32, np.float32,\
+							 np.float32, np.float32]
+
+				if blocksize(self._var_dtype) != self._traceroutput_tracersize:
+					sys.exit("Size of tracer data block given in file is not the same as in code!")
 
 				# cgs scaling of the variable
+				B = np.sqrt(M * V**2 / L**3) # B scaling
+				N = M / (PROTONMASS * L**3) # Gas Density Scaling
+				E = M * V**2 / L**3 # Energy Density Scaling
 				self._var_cgs_factor = [1, L/V, 1, M, L,\
-										L, L, M / (PROTONMASS * L**3), V**2,\
-										np.sqrt(M * V**2 / L**3), M * V**2 / L**3, 1, M * V**2 / L**3,  M / (PROTONMASS * L**3),\
-										M / (PROTONMASS * L**3), V, L/V, 1., 1,\
-										V/L, 1., 1.]
-			else:
-				sys.exit("Version '{:d}-{:d}' not supported or implemented!".format(self._version // 100, self._version % 100))
+										L, L, N, V**2, B,\
+										E, 1, E, N, N,\
+										V, L/V, 1., 1, V/L,\
+										1., 1.]
 
+			elif self._version == 201902:
+				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
+							 'y', 'z', 'n_gas', 'u_therm', 'Bx',\
+							 'By', 'Bz', 'eps_photon', 'ShockFlag', 'eps_CRpShockInj',\
+							 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross', 'theta',\
+							 'CReInjection', 'injRate', 'alphaInj', 'pInj']
+
+				# types of the variable
+				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
+							 np.float32, np.float32, np.float32, np.float32, np.float32,\
+							 np.float32, np.float32, np.float32, np.int32,   np.float32,\
+							 np.float32, np.float32, np.float32, np.float32, np.float32,\
+							 np.int32, np.float32, np.float32, np.float32]
+
+				if blocksize(self._var_dtype) != self._traceroutput_tracersize:
+					sys.exit("Size of tracer data block given in file is not the same as in code!")
+
+				# cgs scaling of the variable
+				B = np.sqrt(M * V**2 / L**3) # B scaling
+				N = M / (PROTONMASS * L**3) # Gas Density Scaling
+				E = M * V**2 / L**3 # Energy Density Scaling
+				self._var_cgs_factor = [1, L/V, 1, M, L,\
+										L, L, N, V**2, B,\
+										B, B, E, 1, E,\
+										N, N, V, L/V, 1.,\
+										1, V/L, 1., 1.]
+
+			else:
+				sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
 			
 			
 			# Reading block with data values
@@ -740,33 +786,56 @@ class ArepoTracerOutput:
 
 	
 ####################################################################################################
-def ConvertTracerOutput(file_name):
-	""" Convert pre 2019-01  legacy Arepo tracer output to version 2019-01"""
+def ConvertTracerOutput(file_name, out_version=201901):
+	""" Convert pre 2019-01  legacy Arepo tracer output to version 2019-01 and 2019-02"""
 	
 	with open(file_name, 'rb') as file_in:
 		size_i, size_I, size_f, size_d = check_encoding()
 
 		# Reading first block with unit system
 		traceroutput_headersize = int(struct.unpack('i',file_in.read(size_i))[0])
+		print("Converting tracer output to version '2019-01'")
 		if traceroutput_headersize == 3 * size_d:
-			print("Converting tracer output to equivalent version '2019-01'")
+			
 			UnitLength_in_cm         = struct.unpack('d', file_in.read(size_d))[0]
 			UnitMass_in_g            = struct.unpack('d', file_in.read(size_d))[0]
 			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
 
 	
-			version = 201901
+			version = out_version
 			if struct.unpack('i', file_in.read(size_i))[0] != traceroutput_headersize:
 				sys.exit("Expected header block with size of 3 doubles")
 
 			# now change to new traceroutput_headersize
 			traceroutput_headersize = 3 * size_i + 3 * size_d
-				
-			traceroutput_tracersize = 2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d
+			
+			traceroutput_tracersize = 2 * size_i + 2 * size_I + 17 * size_f + 1 * size_d
+			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d 
+			tracersize_after_temp   = 2 * size_i              + 13 * size_f
 			blocksize = int(struct.unpack('i',file_in.read(size_i))[0]) 
 			
-			nPart = blocksize // traceroutput_tracersize
-			traceroutput_tracerblocksize = traceroutput_tracersize * nPart
+			nPart = blocksize // (traceroutput_tracersize + 1 * size_f) # the old version contains one additional float
+			if out_version = 201902:
+				traceroutput_tracersize += 2 * size_f # 2019-02 contains 3D magnetic field
+			
+		elif traceroutput_headersize == 3 * size_d + 3 * size_i:
+			# first 2019-01 version with the variable temp included
+			version = struct.unpack('i', f.read(size_i))[0]
+			UnitLength_in_cm         = struct.unpack('d', file_in.read(size_d))[0]
+			UnitMass_in_g            = struct.unpack('d', file_in.read(size_d))[0]
+			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
+			nPart                    = struct.unpack('i', f.read(size_i))[0]
+			traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
+			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d 
+			tracersize_after_temp   = 2 * size_i              + 13 * size_f
+			if traceroutput_tracersize ==  2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d:
+				traceroutput_tracersize -= size_f
+			else:
+				sys.exit("This file already is in version 2019-01 without temperature or 2019-02")
+
+			if out_version = 201902:
+				traceroutput_tracersize += 2 * size_f # 2019-02 contains 3D magnetic field
+				version = 201902
 
 		else:
 			blocksize = 0
@@ -787,10 +856,13 @@ def ConvertTracerOutput(file_name):
 
 		# tracer particle blocks
 		buf = 1 #if buf > 0 or True next block will be read		   					
+		
 		while(buf):
 
 			file_out.write(struct.pack('i', traceroutput_tracersize * nPart)) # starting integer
-			file_out.write(file_in.read(traceroutput_tracerblocksize)) # data block
+			file_out.write(file_in.read(tracersize_before_temp * nPart)) # data block before temp
+			file_in.seek(nPart * size_f, 1) # jump over the temperature block
+			file_out.write(file_in.read(tracersize_after_temp * nPart)) # data block after temp
 			file_out.write(struct.pack('i', traceroutput_tracersize * nPart)) # closing integer
 
 			if  int(struct.unpack('i',file_in.read(size_i))[0]) != blocksize:
