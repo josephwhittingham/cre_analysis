@@ -1,6 +1,152 @@
 import numpy as np
 import struct
 import sys
+from Physics import PROTONMASS
+
+
+####################################################################################################
+# class which handles the parameters given via files to the C program
+# parameters are needed for calculating the plots
+class CrestParameters:
+	"""Read the parameter file for a CREST simulation"""
+
+	def __init__(self, file_name = None, verbose = False):
+		"""
+		Initialize all possible variables which can be defined by the parameter file.
+		Note that it contains some legacy variables.
+		If a path to the parameter file is given the file will be read in
+		"""
+
+		# General Settings for I/O
+		self.OutputDir                   = ''
+		self.InputDataFile               = ''  
+		self.SnapshotFileBase            = ''
+
+		# Settings for Discretization
+		self.NumberOfMomentumBins        = 0
+		self.CourantFac                  = 0.0
+		self.AlphaCoefficientMaximum     = 0.0
+		self.MaximumSubcycles_in_log2    = 0
+		self.MinimumMomentum             = 0.0
+		self.MaximumMomentum             = 0.0
+		self.TimeStepsUpdate             = 1
+		self.IncludeMaximumMomentum      = 0
+
+		# CR density distribution function
+		self.AlphaSpectralIndex          = 0.0
+		self.MomentumLowCutoff           = 0.0
+		self.MomentumHighCutoff          = 0.0
+		self.NormalizationFactor         = 0.0
+		self.InitialSpectrumFile         = ''
+		self.UseInitialSpectrumFile      = 0
+
+		# System of units (does not apply for electron energy/momentum)
+		self.UnitLength_in_cm            = 1.
+		self.UnitMass_in_g               = 1.
+		self.UnitVelocity_in_cm_per_s    = 1.
+
+		# Output Settings
+		self.OutputEverySnapshotOn       = 0
+		self.TimeOfFirstSnapshot         = 0.0
+		self.TimeBetSnapshot             = 0.01
+		self.CosmologicalIntegrationOn   = 0
+
+		# Flags
+		self.FlagAllowSubcycles          = 1
+		self.FlagCooling                 = 1
+		self.Flag_Fermi_I_Reacceleration = 1
+		self.Flag_Fermi_I_injection      = 1
+		self.Flag_Fermi_II_Reacceleration= 1
+		self.FlagExternalInjection       = 0
+
+		# Cooling & Diffusion
+		self.n_elec                      = 1.157
+		self.HydrogenMassFrac            = 0.76
+		self.DiffusionTimeInGyr          = 0.
+		self.Lambda                      = 0.
+		self.Radiation_Field_in_eps_CMB  = -1. # if this value is -1 then it was not set
+		self.Magnetic_Field_Amplification = -1. # if this value is -1 then it was not set
+
+		# parameters for shock injection
+		self.ShockParamA                 = 0.
+		self.ShockParamB                 = 0.
+		self.ShockParamC                 = 0.
+		self.zeta_pe                     = 0.
+		self.obliquity_critAngle         = -1.
+		self.obliquity_width             = -1.
+		self.obliquity_minEff            = -1.
+		self.obliquity_maxEff            = -1.
+
+		# new parameters with tracer data
+		self.FunctionValueChop           = 1.e-30
+
+		# Semi analytic treatement
+		self.UseSemiAnalyticSolutionLow  = 1
+		self.UseSemiAnalyticSolutionHigh = 1
+		self.FlagFixedNumericsBoundaries = 1
+		self.MaximumMomentumNumerics = 0.
+		self.MinimumMomentumNumerics = 0.
+
+		if file_name is not None:
+			self.read_data(file_name, verbose)
+
+	def __del__(self):
+		for var in vars(self):
+			setattr(self,var,None)
+
+	def show(self):
+		for var in vars(self):
+			if type(getattr(self, var)) is int:
+				print("{:25} {:d}".format(var,getattr(self,var)))
+			if type(getattr(self, var)) is float:
+				print("{:25} {:.5e}".format(var,getattr(self,var)))
+			if type(getattr(self, var)) is str:
+				print("{:25} {:}".format(var,getattr(self,var)))
+	
+	# read in the parameter file and set the private class variables accordingly
+	def read_data(self, file_name, verbose = False):
+		fParam = open(file_name, 'r')
+		if verbose:
+			print("Reading parameters from file '{:}'\n".format(file_name))
+		for line in fParam:
+			lineParam = (line.strip()).lstrip()
+			
+			# ignore lines beginning with a '%' sign
+			if(lineParam != ''):
+				if(lineParam[0] != '%'):
+					columnParam = line.split()
+					# only take lines which are of the following format: ParameterTag Space Value
+					if(len(columnParam) == 2):
+						# loop over all variables to find the one corresponding to the one read from the parameter fiel
+						for var in vars(self):
+							if(var == columnParam[0]):
+								if type(getattr(self, var)) is int:
+									setattr(self,var,int(columnParam[1]))
+									if verbose:
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
+									continue
+								elif type(getattr(self, var)) is float:
+									setattr(self,var,float(columnParam[1]))
+									if verbose:
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
+									continue
+								elif type(getattr(self, var)) is str:
+									setattr(self,var,columnParam[1])
+									if verbose:
+										print("\t{:25} {:}".format(columnParam[0],columnParam[1]))
+									continue
+		if self.OutputDir[-1] != '/':
+			self.OutputDir += '/'
+		if verbose:
+			print("\n")
+		line = None
+		lineParam = None
+		columnParam = None
+		fParam.close()
+
+	def BinsPerDec(self):
+		return (self.NumberOfMomentumBins - self.IncludeMaximumMomentum) / int(np.log10(self.MaximumMomentum) - np.log10(self.MinimumMomentum))
+
 
 
 ####################################################################################################
@@ -138,7 +284,7 @@ class ArepoTracerOutput:
 	Example:
 	   Load a tracer output with path and name to file by, e.g.,
 
-	      $ data = TracerOutput("path_to_file/file_name.dat")
+	      $ data = ArepoTracerOutput("path_to_file/file_name.dat")
 
 	   and access all x positions
 
@@ -155,7 +301,7 @@ class ArepoTracerOutput:
 	# instance variables
 	def __init__(self, file_name = None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None):
 		"""
-		Initialize an instance of the TracerOutput.
+		Initialize an instance of ArepoTracerOutput.
 
 		If no parameters are given an empty instance is initialized.
 		If a path to a file is provided the file will be read in 
@@ -543,7 +689,7 @@ class ArepoTracerOutput:
 
 	def __getitem__(self, key):
 		# check dimensions of return
-		ret = TracerOutput()
+		ret = ArepoTracerOutput()
 		ret.All_Units_in_cgs = self.All_Units_in_cgs
 		ret.UnitLength_in_cm = self.UnitLength_in_cm
 		ret.UnitMass_in_g = self.UnitMass_in_g
@@ -554,7 +700,8 @@ class ArepoTracerOutput:
 		ret._var_cgs_factor = self._var_cgs_factor
 		ret._var_store = self._var_store
 
-		if isinstance(key, int):
+		if isinstance(key, int) or isinstance(key, np.int)\
+				or isinstance(key, np.int32) or isinstance(key, np.int64):
 			ret.nPart = 1
 			ret.nSnap = self.nSnap
 		elif isinstance(key, slice):
@@ -563,7 +710,8 @@ class ArepoTracerOutput:
 			ret.nSnap = self.nSnap
 		elif isinstance(key, tuple):
 			if len(key) == 2:
-				if isinstance(key[0], int):
+				if isinstance(key[0], int) or isinstance(key[0], np.int)\
+						or isinstance(key[0], np.int32) or isinstance(key[0], np.int64):
 					ret.nPart = 1
 				elif isinstance(key[0], slice):
 					start, stop, step = key[0].indices(self.nPart)
@@ -571,7 +719,8 @@ class ArepoTracerOutput:
 				else:
 					raise TypeError('Index must be int or slice, not {}'.format(type(key[0]).__name__))
 
-				if isinstance(key[1], int):
+				if isinstance(key[1], int) or isinstance(key[1], np.int)\
+						or isinstance(key[1], np.int32) or isinstance(key[1], np.int64):
 					ret.nSnap = 1
 				elif isinstance(key[1], slice):
 					start, stop, step = key[1].indices(self.nSnap)
@@ -650,3 +799,75 @@ def ConvertTracerOutput(file_name):
 			buf = file_in.read(size_i) # closing integer of one big block
 
 		file_out.close()
+
+
+####################################################################################################
+# class which handles the parameters given via files to the C program
+# parameters are needed for calculating the plots
+class ArepoParameters:
+	"""Read the parameter file for AREPO simulation"""
+
+	def __init__(self, ParameterFileName = None, verbose = False):
+		# Unit system
+		self.UnitLength_in_cm = 3.085678e18
+		self.UnitMass_in_g = 1.989e33
+		self.UnitVelocity_in_cm_per_s = 1.e5
+
+		self.OutputDir = ''
+		self.SnapshotFileBase = ''
+		
+		if ParameterFileName is not None:
+			self.read_data(ParameterFileName, verbose)
+
+	def __del__(self):
+		for var in vars(self):
+			setattr(self,var,None)
+
+	def show(self):
+		for var in vars(self):
+			if type(getattr(self, var)) is int:
+				print("{:25} {:d}".format(var,getattr(self,var)))
+			if type(getattr(self, var)) is float:
+				print("{:25} {:.5e}".format(var,getattr(self,var)))
+			if type(getattr(self, var)) is str:
+				print("{:25} {:}".format(var,getattr(self,var)))
+	
+	# read in the parameter file and set the private class variables accordingly
+	def read_data(self,ParameterFileName, verbose = False):
+		fParam = open(ParameterFileName,'r')
+		if verbose:
+			print("Reading parameters from file '{:}'\n".format(ParameterFileName))
+		for line in fParam:
+			lineParam = (line.strip()).lstrip()
+			
+			# ignore lines beginning with a '%' sign
+			if(lineParam != ''):
+				if(lineParam[0] != '%'):
+					columnParam = line.split()
+					# only take lines which are of the following format: ParameterTag Space Value
+					if(len(columnParam) == 2):
+						# loop over all variables to find the one corresponding to the one read from the parameter fiel
+						for var in vars(self):
+							if(var == columnParam[0]):
+								if type(getattr(self, var)) is int:
+									setattr(self,var,int(columnParam[1]))
+									continue
+								elif type(getattr(self, var)) is float:
+									setattr(self,var,float(columnParam[1]))
+									continue
+								elif type(getattr(self, var)) is str:
+									setattr(self,var,columnParam[1])
+									continue
+		
+		if self.OutputDir[-1] != '/':
+			self.OutputDir += '/'
+		if verbose:
+			print("")
+			self.show()
+			print("")
+
+		line = None
+		lineParam = None
+		columnParam = None
+		fParam.close()
+

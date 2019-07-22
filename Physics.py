@@ -18,9 +18,24 @@ PARSEC               = 3.085678e18
 SOLAR_MASS           = 1.989e33
 GAMMA                = 5./3.
 
+JANSKY        = 1e-23
+ARCMIN        = 2.90888 * 1e-3
+GIGA_HERTZ    = 1e9
+
+
 # Standard Parameters
 N_ELEC             = 1.157
 HYDROGEN_MASS_FRAC = 0.76
+
+def exp_rep(f):
+	""" Calculate Mantissa and Characteristic of a number, 1.3, 1 = exp_rep(13)/ """
+	if f==0:
+		f_exp = int(0)
+		f_coeff = 0.0
+	else:
+		f_exp = int(np.floor(np.log10(abs(f)) ))
+		f_coeff = f / np.power(10.,f_exp)
+	return [f_coeff, f_exp]
 
 # physical functions
 def plasma_frequency(n_e):
