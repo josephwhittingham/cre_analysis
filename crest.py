@@ -236,7 +236,10 @@ class CrestSnapshot:
 			if not get_only_header:
 				# Spectrum Data
 				blocksize = int(struct.unpack('i', f.read(size_i))[0])
-				datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 8 * size_d)
+				if self.version == 201902:
+					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 10 * size_d)
+				else:
+					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 8 * size_d)
 				if blocksize != datasize:
 					sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, datasize))
 
@@ -247,8 +250,13 @@ class CrestSnapshot:
 				self.n_gas = np.ndarray(self.nPart, dtype=float)
 				self.u_therm = np.ndarray(self.nPart, dtype=float)
 				self.eps_photon = np.ndarray(self.nPart, dtype=float)
-				self.B = np.ndarray(self.nPart, dtype=float)
-				self.pos = np.ndarray((self.nPart, 3), dtype=float)
+				self.pos = np.ndarray((self.nPart, 3), dtype=float)				
+
+				if self.version==201902:
+					self.B = np.ndarray((self.nPart, 3), dtype=float)
+				else:
+					self.B = np.ndarray(self.nPart, dtype=float)
+				
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
@@ -257,11 +265,16 @@ class CrestSnapshot:
 				self.n_gas[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.u_therm[:]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.eps_photon[:]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				self.B[:]             = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				
+				if self.version==201902:
+					for j in np.arange(3):
+						self.B[:, j]   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				else:
+					self.B[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
-				self.pos[:, 0]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				self.pos[:, 1]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				self.pos[:, 2]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				for j in np.arange(3):
+					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
 				
 				for i in np.arange(self.nPart):
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
@@ -384,6 +397,8 @@ class ArepoTracerOutput:
 						return size_f 
 					elif type_str == np.float64: 
 						return size_d 
+					elif type_str == np.ndarray:
+						return 3*size_f
 					else: 
 						sys.exit("error") 
 				return np.sum(np.array([typesize(type_str) for type_str in type_arr])) 
@@ -440,18 +455,19 @@ class ArepoTracerOutput:
 
 
 			if self._version == 201901:
-				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
-							 'y', 'z', 'n_gas', 'u_therm', 'B',\
-							 'eps_photon', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock', 'n_gasPostShock',\
-							 'VShock', 'timeShockCross', 'theta', 'CReInjection', 'injRate',\
-							 'alphaInj', 'pInj']
+				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'pos',\
+								  'n_gas', 'u_therm', 'B', 'eps_photon', 'ShockFlag',\
+								  'eps_CRpShockInj', 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross',\
+								  'theta', 'CReInjection', 'injRate', 'alphaInj', 'pInj']\
+							 
 
 				# types of the variable
-				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.float32, np.float32,\
-							 np.float32, np.int32,   np.float32, np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.int32, np.float32,\
-							 np.float32, np.float32]
+				# we assume the types 'np.array' to be of lenght 3 and dtype np.float32
+				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.ndarray,\
+								   np.float32, np.float32, np.float32, np.float32, np.int32,\
+								   np.float32, np.float32, np.float32, np.float32, np.float32,\
+								   np.float32, np.int32,   np.float32, np.float32, np.float32]
+								   
 
 				if blocksize(self._var_dtype) != self._traceroutput_tracersize:
 					sys.exit("Size of tracer data block given in file is not the same as in code!")
@@ -461,24 +477,24 @@ class ArepoTracerOutput:
 				N = M / (PROTONMASS * L**3) # Gas Density Scaling
 				E = M * V**2 / L**3 # Energy Density Scaling
 				self._var_cgs_factor = [1, L/V, 1, M, L,\
-										L, L, N, V**2, B,\
-										E, 1, E, N, N,\
-										V, L/V, 1., 1, V/L,\
-										1., 1.]
+										N, V**2, B, E, 1,\
+										E, N, N, V, L/V,\
+										1, 1, V/L, 1, 1]
+										
 
 			elif self._version == 201902:
-				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'x',\
-							 'y', 'z', 'n_gas', 'u_therm', 'Bx',\
-							 'By', 'Bz', 'eps_photon', 'ShockFlag', 'eps_CRpShockInj',\
-							 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross', 'theta',\
-							 'CReInjection', 'injRate', 'alphaInj', 'pInj']
+				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'pos',\
+								  'n_gas', 'u_therm', 'B', 'eps_photon', 'ShockFlag',\
+								  'eps_CRpShockInj', 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross',\
+								  'ShockDir',  'theta', 'CReInjection', 'injRate', 'alphaInj',\
+								  'pInj']
 
 				# types of the variable
-				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.float32, np.float32,\
-							 np.float32, np.float32, np.float32, np.int32,   np.float32,\
-							 np.float32, np.float32, np.float32, np.float32, np.float32,\
-							 np.int32, np.float32, np.float32, np.float32]
+				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.ndarray,\
+								   np.float32, np.float32, np.ndarray, np.float32, np.int32,\
+								   np.float32, np.float32, np.float32, np.float32, np.float32,\
+								   np.ndarray, np.float32, np.int32,   np.float32, np.float32,\
+								   np.float32]
 
 				if blocksize(self._var_dtype) != self._traceroutput_tracersize:
 					sys.exit("Size of tracer data block given in file is not the same as in code!")
@@ -488,10 +504,10 @@ class ArepoTracerOutput:
 				N = M / (PROTONMASS * L**3) # Gas Density Scaling
 				E = M * V**2 / L**3 # Energy Density Scaling
 				self._var_cgs_factor = [1, L/V, 1, M, L,\
-										L, L, N, V**2, B,\
-										B, B, E, 1, E,\
-										N, N, V, L/V, 1.,\
-										1, V/L, 1., 1.]
+										N, V**2, B, E, 1,\
+										E, N, N, V, L/V,\
+										1, 1, 1, V/L, 1,\
+										1]
 
 			else:
 				sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
@@ -555,13 +571,21 @@ class ArepoTracerOutput:
 				for i in np.arange(len(self._var_name)):
 					# Create nPart x nSnap size arrays for all variables if var_store element is true
 					if self._var_store[i]:
-						setattr(self, self._var_name[i], np.ndarray((self.nPart, self.nSnap), dtype=self._var_dtype[i]))
+						if self._var_dtype[i] is not np.ndarray: # scalar variable
+							setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart), dtype=self._var_dtype[i]))
+						else: # 3D Vector
+							setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart, 3), dtype=np.float32))
 
 			else:
 				for i in np.arange(len(self._var_name)):
 					# Create nPart x nSnap size arrays for all variables if var_store element is true
 					if self._var_store[i]:
-						setattr(self, self._var_name[i], np.ndarray((self.nSnap), dtype=self._var_dtype[i]))
+						if self._var_dtype[i] is not np.ndarray: # scalar
+							setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
+						else: # 3D Vector
+							setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
+
+
 
 			if first_snap is not None:
 				# skip some lines
@@ -577,13 +601,16 @@ class ArepoTracerOutput:
 						if self._var_store[i]:
 							# if variable should be stored, check the type and read from file in the correct format
 							if self._var_dtype[i] == np.uint32:
-								getattr(self, self._var_name[i])[:, n] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[:, n] = struct.unpack( ... )
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[n, :] = struct.unpack( ... )
 							elif self._var_dtype[i] == np.int32:
-								getattr(self, self._var_name[i])[:, n] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
 							elif self._var_dtype[i] == np.float32:
-								getattr(self, self._var_name[i])[:, n] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 							elif self._var_dtype[i] == np.float64:
-								getattr(self, self._var_name[i])[:, n] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+							elif self._var_dtype[i] == np.ndarray:
+								for j in np.arange(3):
+									getattr(self, self._var_name[i])[n, :, j] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
 							else:
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 						else:
@@ -596,6 +623,8 @@ class ArepoTracerOutput:
 								f.seek(size_f * self.nPart, 1)
 							elif self._var_dtype[i] == np.float64:
 								f.seek(size_d * self.nPart, 1)
+							elif self._var_dtype[i] == np.ndarray:
+								f.seek(3 * size_f * self.nPart, 1)
 							else:
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
@@ -618,23 +647,29 @@ class ArepoTracerOutput:
 							# jump to end of the variable block
 							if self._var_dtype[i] == np.uint32:
 								f.seek(pos * size_I, 1)
-								getattr(self, self._var_name[i])[n] = struct.unpack('I', f.read(size_I))[0]
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('I', f.read(size_I))[0]
 								f.seek(size_I * (nPartInFile - pos - 1), 1)
 								
 							elif self._var_dtype[i] == np.int32:
 								f.seek(pos * size_i, 1)
-								getattr(self, self._var_name[i])[n] = struct.unpack('i', f.read(size_i))[0]
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('i', f.read(size_i))[0]
 								f.seek(size_i * (nPartInFile - pos - 1), 1)
 								
 							elif self._var_dtype[i] == np.float32:
 								f.seek(pos * size_f, 1)
-								getattr(self, self._var_name[i])[n] = struct.unpack('f', f.read(size_f))[0]
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('f', f.read(size_f))[0]
 								f.seek(size_f * (nPartInFile - pos - 1), 1)
 								
 							elif self._var_dtype[i] == np.float64:
 								f.seek(pos * size_d, 1)
-								getattr(self, self._var_name[i])[n] = struct.unpack('d', f.read(size_d))[0]
+								getattr(self, self._var_name[i])[n, :] = struct.unpack('d', f.read(size_d))[0]
 								f.seek(size_d * (nPartInFile - pos - 1), 1)
+
+							elif self._var_dtype[i] == np.ndarray:
+								for j in np.arange(3):
+									f.seek(pos * size_f, 1)
+									getattr(self, self._var_name[i])[n, :, j] = struct.unpack('f', f.read(size_f))[0]
+									f.seek(size_f * (nPartInFile - pos - 1), 1)
 								
 							else:
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
@@ -648,6 +683,8 @@ class ArepoTracerOutput:
 								f.seek(size_f * nPartInFile, 1)
 							elif self._var_dtype[i] == np.float64:
 								f.seek(size_d * nPartInFile, 1)
+							elif self._var_dtype[i] == np.ndarray:
+								f.seek(3 * size_f * nPartInFile, 1)
 							else:
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
@@ -669,15 +706,19 @@ class ArepoTracerOutput:
 							# convert to numpy array which supports indexing with arrays, slices, etc.
 							# (return type of struct.unpack is 'tuple')
 							if self._var_dtype[i] == np.uint32:
-								getattr(self, self._var_name[i])[:, n] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
+								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
 							elif self._var_dtype[i] == np.int32:
-								getattr(self, self._var_name[i])[:, n] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
+								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
 							elif self._var_dtype[i] == np.float32:
-								getattr(self, self._var_name[i])[:, n] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
+								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
 							elif self._var_dtype[i] == np.float64:
-								getattr(self, self._var_name[i])[:, n] = np.array(struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile)), dtype=np.float64)[specific_particles]
-							else:
+								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile)), dtype=np.float64)[specific_particles]
+							elif self._var_dtype[i] == np.ndarray:
+								for j in np.arange(3):
+									getattr(self, self._var_name[i])[n, :, j] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
+							else: 
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
 						else:
 							#if variable should not be stored, skip right number of bytes in file
 							if self._var_dtype[i] == np.uint32:
@@ -688,6 +729,8 @@ class ArepoTracerOutput:
 								f.seek(size_f * nPartInFile, 1)
 							elif self._var_dtype[i] == np.float64:
 								f.seek(size_d * nPartInFile, 1)
+							elif self._var_dtype[i] == np.ndarray:
+								f.seek(3 * size_f * nPartInFile, 1)
 							else:
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
@@ -748,29 +791,29 @@ class ArepoTracerOutput:
 
 		if isinstance(key, int) or isinstance(key, np.int)\
 				or isinstance(key, np.int32) or isinstance(key, np.int64):
-			ret.nPart = 1
-			ret.nSnap = self.nSnap
+			ret.nSnap = 1
+			ret.nPart = self.nPart
 		elif isinstance(key, slice):
-			start, stop, step = key.indices(self.nPart)
-			ret.nPart = np.arange(start, stop, step).size
-			ret.nSnap = self.nSnap
+			start, stop, step = key.indices(self.nSnap)
+			ret.nSnap = np.arange(start, stop, step).size
+			ret.nPart = self.nPart
 		elif isinstance(key, tuple):
 			if len(key) == 2:
 				if isinstance(key[0], int) or isinstance(key[0], np.int)\
 						or isinstance(key[0], np.int32) or isinstance(key[0], np.int64):
-					ret.nPart = 1
+					ret.nSnap = 1
 				elif isinstance(key[0], slice):
-					start, stop, step = key[0].indices(self.nPart)
-					ret.nPart = np.arange(start, stop, step).size
+					start, stop, step = key[0].indices(self.nSnap)
+					ret.nSnap = np.arange(start, stop, step).size
 				else:
 					raise TypeError('Index must be int or slice, not {}'.format(type(key[0]).__name__))
 
 				if isinstance(key[1], int) or isinstance(key[1], np.int)\
 						or isinstance(key[1], np.int32) or isinstance(key[1], np.int64):
-					ret.nSnap = 1
+					ret.nPart = 1
 				elif isinstance(key[1], slice):
-					start, stop, step = key[1].indices(self.nSnap)
-					ret.nSnap = np.arange(start, stop, step).size
+					start, stop, step = key[1].indices(self.nPart)
+					ret.nPart = np.arange(start, stop, step).size
 				else:
 					raise TypeError('Index must be int or slice, not {}'.format(type(key[1]).__name__))
 		else:
@@ -815,7 +858,7 @@ def ConvertTracerOutput(file_name, out_version=201901):
 			blocksize = int(struct.unpack('i',file_in.read(size_i))[0]) 
 			
 			nPart = blocksize // (traceroutput_tracersize + 1 * size_f) # the old version contains one additional float
-			if out_version = 201902:
+			if out_version == 201902:
 				traceroutput_tracersize += 2 * size_f # 2019-02 contains 3D magnetic field
 			
 		elif traceroutput_headersize == 3 * size_d + 3 * size_i:
@@ -833,8 +876,8 @@ def ConvertTracerOutput(file_name, out_version=201901):
 			else:
 				sys.exit("This file already is in version 2019-01 without temperature or 2019-02")
 
-			if out_version = 201902:
-				traceroutput_tracersize += 2 * size_f # 2019-02 contains 3D magnetic field
+			if out_version == 201902:
+				traceroutput_tracersize += 5 * size_f # 2019-02 contains 3D magnetic field and ShockDir
 				version = 201902
 
 		else:
