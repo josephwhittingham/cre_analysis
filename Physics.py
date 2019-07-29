@@ -27,13 +27,13 @@ GIGA_HERTZ    = 1e9
 N_ELEC             = 1.157
 HYDROGEN_MASS_FRAC = 0.76
 
-def exp_rep(f):
+def exp_rep(f, logdigits=2):
 	""" Calculate Mantissa and Characteristic of a number, 1.3, 1 = exp_rep(13)/ """
 	if f==0:
 		f_exp = int(0)
 		f_coeff = 0.0
 	else:
-		f_exp = int(np.floor(np.log10(abs(f)) ))
+		f_exp = int(np.floor(np.round(np.log10(abs(f)),logdigits)))
 		f_coeff = f / np.power(10.,f_exp)
 	return [f_coeff, f_exp]
 
