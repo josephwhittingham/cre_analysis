@@ -205,7 +205,7 @@ class CrestSnapshot:
 
 			
 			# Header information
-			blocksize = int(struct.unpack('i', f.read(size_i))[0])
+			blocksize = int(struct.unpack('I', f.read(size_i))[0])
 			headersize = 3 * size_i + size_d
 			if headersize != blocksize:
 				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, headersize))
@@ -218,24 +218,24 @@ class CrestSnapshot:
 			self.nPart   = int(  struct.unpack('i', f.read(size_i))[0])
 			self.nBins   = int(  struct.unpack('i', f.read(size_i))[0])
 
-			if int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
+			if int(struct.unpack('I',f.read(size_i))[0]) != blocksize:
 				sys.exit("header data block not correctly enclosed")
 
 			# Momentum Bins
-			blocksize = int(struct.unpack('i', f.read(size_i))[0])
+			blocksize = int(struct.unpack('I', f.read(size_i))[0])
 			momentumsize = self.nBins * size_d
 			if momentumsize != blocksize:
 				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, momentumsize))
 			self.p = np.ndarray(self.nBins, dtype=float)
 			self.p[:] = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))[:]
 			
-			if  int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
+			if  int(struct.unpack('I',f.read(size_i))[0]) != blocksize:
 				sys.exit("2nd data block not correctly enclosed")
 
 			# Data
 			if not get_only_header:
 				# Spectrum Data
-				blocksize = int(struct.unpack('i', f.read(size_i))[0])
+				blocksize = int(struct.unpack('I', f.read(size_i))[0])
 				if self.version == 201902:
 					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 10 * size_d)
 				else:
@@ -279,7 +279,8 @@ class CrestSnapshot:
 				for i in np.arange(self.nPart):
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
 
-				if int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
+				blocksize_end = int(struct.unpack('I',f.read(size_i))[0])
+				if blocksize_end != blocksize:
 					sys.exit("3rd data block not correctly enclosed")
 
 
@@ -825,7 +826,6 @@ class ArepoTracerOutput:
 				setattr(ret, ret._var_name[i], getattr(self, self._var_name[i]).__getitem__(key))
 
 		return ret
-
 
 	
 ####################################################################################################
