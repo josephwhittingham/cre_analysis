@@ -55,7 +55,7 @@ class CrestParameters:
 		self.FlagAllowSubcycles          = 1
 		self.FlagCooling                 = 1
 		self.Flag_Fermi_I_Reacceleration = 1
-		self.Flag_Fermi_I_injection      = 1
+		self.Flag_Fermi_I_Acceleration   = 1
 		self.Flag_Fermi_II_Reacceleration= 1
 		self.FlagExternalInjection       = 0
 
@@ -71,6 +71,7 @@ class CrestParameters:
 		self.ShockParamA                 = 0.
 		self.ShockParamB                 = 0.
 		self.ShockParamC                 = 0.
+		self.Acceleration_Max_Momentum   = 1.e20
 		self.zeta_pe                     = 0.
 		self.obliquity_critAngle         = -1.
 		self.obliquity_width             = -1.
