@@ -2,7 +2,7 @@ import numpy as np
 import struct
 import sys
 from Physics import PROTONMASS
-
+from os.path import isfile
 
 ####################################################################################################
 # class which handles the parameters given via files to the C program
@@ -55,7 +55,7 @@ class CrestParameters:
 		self.FlagAllowSubcycles          = 1
 		self.FlagCooling                 = 1
 		self.Flag_Fermi_I_Reacceleration = 1
-		self.Flag_Fermi_I_injection      = 1
+		self.Flag_Fermi_I_Acceleration   = 1
 		self.Flag_Fermi_II_Reacceleration= 1
 		self.FlagExternalInjection       = 0
 
@@ -66,11 +66,14 @@ class CrestParameters:
 		self.Lambda                      = 0.
 		self.Radiation_Field_in_eps_CMB  = -1. # if this value is -1 then it was not set
 		self.Magnetic_Field_Amplification = -1. # if this value is -1 then it was not set
+		self.Amplification_Flag			  = -1. # if this value is -1 then it was not set
+		self.MeanMolecularWeight          = 1.
 
 		# parameters for shock injection
 		self.ShockParamA                 = 0.
 		self.ShockParamB                 = 0.
 		self.ShockParamC                 = 0.
+		self.Acceleration_Max_Momentum   = 1.e20
 		self.zeta_pe                     = 0.
 		self.obliquity_critAngle         = -1.
 		self.obliquity_width             = -1.
@@ -633,112 +636,116 @@ class ArepoTracerOutput:
 						sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
 
 					f.seek(size_i, 1)
-
-			elif type(specific_particles) is int:
-				pos = specific_particles
-				# read single data
-				for n in np.arange(self.nSnap):
-					# loop over all possible variables
-					for i in np.arange(len(self._var_name)):
-						
-						if self._var_store[i]:
-							# if variable should be stored, check the type and read from file in the correct format
-							# jump to the position of the desired particle in the variable block
-							# read in the right amount of bytes
-							# jump to end of the variable block
-							if self._var_dtype[i] == np.uint32:
-								f.seek(pos * size_I, 1)
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('I', f.read(size_I))[0]
-								f.seek(size_I * (nPartInFile - pos - 1), 1)
-								
-							elif self._var_dtype[i] == np.int32:
-								f.seek(pos * size_i, 1)
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('i', f.read(size_i))[0]
-								f.seek(size_i * (nPartInFile - pos - 1), 1)
-								
-							elif self._var_dtype[i] == np.float32:
-								f.seek(pos * size_f, 1)
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('f', f.read(size_f))[0]
-								f.seek(size_f * (nPartInFile - pos - 1), 1)
-								
-							elif self._var_dtype[i] == np.float64:
-								f.seek(pos * size_d, 1)
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('d', f.read(size_d))[0]
-								f.seek(size_d * (nPartInFile - pos - 1), 1)
-
-							elif self._var_dtype[i] == np.ndarray:
-								for j in np.arange(3):
-									f.seek(pos * size_f, 1)
-									getattr(self, self._var_name[i])[n, :, j] = struct.unpack('f', f.read(size_f))[0]
-									f.seek(size_f * (nPartInFile - pos - 1), 1)
-								
-							else:
-								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-						else:
-							#if variable should not be stored, skip right number of bytes in file
-							if self._var_dtype[i] == np.uint32:
-								f.seek(size_I * nPartInFile, 1)
-							elif self._var_dtype[i] == np.int32:
-								f.seek(size_i * nPartInFile, 1)
-							elif self._var_dtype[i] == np.float32:
-								f.seek(size_f * nPartInFile, 1)
-							elif self._var_dtype[i] == np.float64:
-								f.seek(size_d * nPartInFile, 1)
-							elif self._var_dtype[i] == np.ndarray:
-								f.seek(3 * size_f * nPartInFile, 1)
-							else:
-								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-					if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
-						sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
-
-					f.seek(size_i, 1)
-
-
 			else:
-				# read all the data but just take a slice out of it
-				for n in np.arange(self.nSnap):
+				if type(specific_particles) is np.ndarray or type(specific_particles) is list:
+					if len(specific_particles) == 1:
+						specific_particles = specific_particles[0]
 
-					# loop over all possible variables
-					for i in np.arange(len(self._var_name)):
-						
-						if self._var_store[i]:
-							# if variable should be stored, check the entire block of the variable
-							# convert to numpy array which supports indexing with arrays, slices, etc.
-							# (return type of struct.unpack is 'tuple')
-							if self._var_dtype[i] == np.uint32:
-								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
-							elif self._var_dtype[i] == np.int32:
-								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
-							elif self._var_dtype[i] == np.float32:
-								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
-							elif self._var_dtype[i] == np.float64:
-								getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile)), dtype=np.float64)[specific_particles]
-							elif self._var_dtype[i] == np.ndarray:
-								for j in np.arange(3):
-									getattr(self, self._var_name[i])[n, :, j] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
-							else: 
-								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+				if type(specific_particles) is int:
+					pos = specific_particles
+					# read single data
+					for n in np.arange(self.nSnap):
+						# loop over all possible variables
+						for i in np.arange(len(self._var_name)):
 
-						else:
-							#if variable should not be stored, skip right number of bytes in file
-							if self._var_dtype[i] == np.uint32:
-								f.seek(size_I * nPartInFile, 1)
-							elif self._var_dtype[i] == np.int32:
-								f.seek(size_i * nPartInFile, 1)
-							elif self._var_dtype[i] == np.float32:
-								f.seek(size_f * nPartInFile, 1)
-							elif self._var_dtype[i] == np.float64:
-								f.seek(size_d * nPartInFile, 1)
-							elif self._var_dtype[i] == np.ndarray:
-								f.seek(3 * size_f * nPartInFile, 1)
+							if self._var_store[i]:
+								# if variable should be stored, check the type and read from file in the correct format
+								# jump to the position of the desired particle in the variable block
+								# read in the right amount of bytes
+								# jump to end of the variable block
+								if self._var_dtype[i] == np.uint32:
+									f.seek(pos * size_I, 1)
+									getattr(self, self._var_name[i])[n, :] = struct.unpack('I', f.read(size_I))[0]
+									f.seek(size_I * (nPartInFile - pos - 1), 1)
+
+								elif self._var_dtype[i] == np.int32:
+									f.seek(pos * size_i, 1)
+									getattr(self, self._var_name[i])[n, :] = struct.unpack('i', f.read(size_i))[0]
+									f.seek(size_i * (nPartInFile - pos - 1), 1)
+
+								elif self._var_dtype[i] == np.float32:
+									f.seek(pos * size_f, 1)
+									getattr(self, self._var_name[i])[n, :] = struct.unpack('f', f.read(size_f))[0]
+									f.seek(size_f * (nPartInFile - pos - 1), 1)
+
+								elif self._var_dtype[i] == np.float64:
+									f.seek(pos * size_d, 1)
+									getattr(self, self._var_name[i])[n, :] = struct.unpack('d', f.read(size_d))[0]
+									f.seek(size_d * (nPartInFile - pos - 1), 1)
+
+								elif self._var_dtype[i] == np.ndarray:
+									for j in np.arange(3):
+										f.seek(pos * size_f, 1)
+										getattr(self, self._var_name[i])[n, :, j] = struct.unpack('f', f.read(size_f))[0]
+										f.seek(size_f * (nPartInFile - pos - 1), 1)
+
+								else:
+									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 							else:
-								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+								#if variable should not be stored, skip right number of bytes in file
+								if self._var_dtype[i] == np.uint32:
+									f.seek(size_I * nPartInFile, 1)
+								elif self._var_dtype[i] == np.int32:
+									f.seek(size_i * nPartInFile, 1)
+								elif self._var_dtype[i] == np.float32:
+									f.seek(size_f * nPartInFile, 1)
+								elif self._var_dtype[i] == np.float64:
+									f.seek(size_d * nPartInFile, 1)
+								elif self._var_dtype[i] == np.ndarray:
+									f.seek(3 * size_f * nPartInFile, 1)
+								else:
+									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
-					if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
-						sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
+						if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
+							sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
 
-					f.seek(size_i, 1)
+						f.seek(size_i, 1)
+
+
+				else:
+					# read all the data but just take a slice out of it
+					for n in np.arange(self.nSnap):
+
+						# loop over all possible variables
+						for i in np.arange(len(self._var_name)):
+
+							if self._var_store[i]:
+								# if variable should be stored, check the entire block of the variable
+								# convert to numpy array which supports indexing with arrays, slices, etc.
+								# (return type of struct.unpack is 'tuple')
+								if self._var_dtype[i] == np.uint32:
+									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
+								elif self._var_dtype[i] == np.int32:
+									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
+								elif self._var_dtype[i] == np.float32:
+									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
+								elif self._var_dtype[i] == np.float64:
+									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile)), dtype=np.float64)[specific_particles]
+								elif self._var_dtype[i] == np.ndarray:
+									for j in np.arange(3):
+										getattr(self, self._var_name[i])[n, :, j] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
+								else: 
+									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+							else:
+								#if variable should not be stored, skip right number of bytes in file
+								if self._var_dtype[i] == np.uint32:
+									f.seek(size_I * nPartInFile, 1)
+								elif self._var_dtype[i] == np.int32:
+									f.seek(size_i * nPartInFile, 1)
+								elif self._var_dtype[i] == np.float32:
+									f.seek(size_f * nPartInFile, 1)
+								elif self._var_dtype[i] == np.float64:
+									f.seek(size_d * nPartInFile, 1)
+								elif self._var_dtype[i] == np.ndarray:
+									f.seek(3 * size_f * nPartInFile, 1)
+								else:
+									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+						if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
+							sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
+
+						f.seek(size_i, 1)
 
 			f.close()
 			if verbose:
@@ -826,6 +833,57 @@ class ArepoTracerOutput:
 				setattr(ret, ret._var_name[i], getattr(self, self._var_name[i]).__getitem__(key))
 
 		return ret
+	
+	def save(self, file_name):
+		"""
+		Write a new output file with the subset of currently stored particles.
+		"""
+		if not self._var_store.all():
+			print("Warning: No output was created! Not every possible field is stored, therefore an output is unreadable by CREST.")
+			return None
+			
+		if isfile(file_name):
+			print("Warning: File existed and will be overwritten")
+			f_op = 'wb'
+		else:
+			f_op = 'rb'
+
+
+		with open(file_name, f_op) as f:
+			# Store header block
+			f.write(struct.pack('i', self._traceroutput_headersize))
+			f.write(struct.pack('i', self._version))
+			f.write(struct.pack('d', self.UnitLength_in_cm))
+			f.write(struct.pack('d', self.UnitMass_in_g))
+			f.write(struct.pack('d', self.UnitVelocity_in_cm_per_s))
+			f.write(struct.pack('i', self.nPart))
+			f.write(struct.pack('i', self._traceroutput_tracersize))
+			f.write(struct.pack('i', self._traceroutput_headersize))
+
+			blocksize = self.nPart * self._traceroutput_tracersize
+
+			for n in np.arange(self.nSnap):
+				f.write(struct.pack('i', blocksize))
+				for i in np.arange(len(self._var_name)):
+					if self._var_dtype[i] == np.uint32:
+						f.write(struct.pack('{:d}I'.format(self.nPart), *getattr(self, self._var_name[i])[n, :])) # equivalent to e.g. struct.pack(... , self.ID[n, :] )
+					elif self._var_dtype[i] == np.int32:
+						f.write(struct.pack('{:d}i'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
+					elif self._var_dtype[i] == np.float32:
+						f.write(struct.pack('{:d}f'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
+					elif self._var_dtype[i] == np.float64:
+						f.write(struct.pack('{:d}d'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
+					elif self._var_dtype[i] == np.ndarray:
+						for j in np.arange(3):
+							f.write(struct.pack('{:d}f'.format(self.nPart), *getattr(self, self._var_name[i])[n, :, j]))
+					else:
+						sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+				f.write(struct.pack('i', blocksize))
+
+			print("Succesfully stored Arepo tracer outputfile in '{:}'".format(file_name))
+				
+		
 
 	
 ####################################################################################################
