@@ -1032,6 +1032,7 @@ class ArepoParameters:
 		self.UnitLength_in_cm = 3.085678e18
 		self.UnitMass_in_g = 1.989e33
 		self.UnitVelocity_in_cm_per_s = 1.e5
+		self.AccelerationEfficiency = 0.1
 
 		self.OutputDir = ''
 		self.SnapshotFileBase = ''
