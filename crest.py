@@ -407,13 +407,17 @@ class ArepoTracerOutput:
 						sys.exit("error") 
 				return np.sum(np.array([typesize(type_str) for type_str in type_arr])) 
 
-			# Version dependend configurati
+			# Version dependend configuration
 			# we need to make sure that old simulations can be read in
 			# python tool for tracer output conversion??
 			
 
 			
-			# definitions 
+			# definitions from arepo's Config.sh file
+			# only from version 2019-03 stored in tracer particle file
+			self._flag_cosmic_ray_shock_acceleration = True
+			self._flag_cosmic_ray_magnetic_obliquity = True
+			self._flag_cosmic_ray_sn_injection = True
 
 			# Reading first block with unit system
 			self._traceroutput_headersize = int(struct.unpack('i', f.read(size_i))[0])
@@ -433,7 +437,7 @@ class ArepoTracerOutput:
 				
 							
 			elif self._traceroutput_headersize == 3 * size_d + 3 * size_i:
-
+				# version 2019-02
 				self._version                 = struct.unpack('i', f.read(size_i))[0]
 				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
 				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
@@ -442,15 +446,32 @@ class ArepoTracerOutput:
 				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
 
 			else:
-							
-				sys.exit("Expected header block with size of 3 doubles (old style) or 3 doubles plus 3 integers.")
+				# version 2019-03
+				self._version                 = struct.unpack('i', f.read(size_i))[0]
+				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
+				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
+				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
+				self.nPart                    = struct.unpack('i', f.read(size_i))[0]
+				self._flag_cosmic_ray_shock_acceleration = bool(struct.unpack('i', f.read(size_i))[0])
+				self._flag_cosmic_ray_magnetic_obliquity = bool(struct.unpack('i', f.read(size_i))[0])
+				self._flag_cosmic_ray_sn_injection = bool(struct.unpack('i', f.read(size_i))[0])
+				self.ID = np.ndarray(self.nPart, dtype=np.uint32)
+				self.ID[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))[:]
+				self.TracerMass = np.ndarray(self.nPart, dtype=np.float32)
+				self.TracerMass[:] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))[:]
+				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]		
 
 			if  int(struct.unpack('i', f.read(size_i))[0]) != self._traceroutput_headersize:
-				sys.exit("Expected header block with size of 3 doubles (old style) or 3 doubles plus 3 integers.")
+				sys.exit("Header block not correctly enclosed")
 
 			L = self.UnitLength_in_cm
 			M = self.UnitMass_in_g
 			V = self.UnitVelocity_in_cm_per_s
+
+			# cgs scaling of variables
+			B = np.sqrt(M * V**2 / L**3) # B scaling
+			N = M / (PROTONMASS * L**3) # Gas Density Scaling without mean molecular weight!
+			E = M * V**2 / L**3 # Energy Density Scaling
 
 
 			# names of all possible variables
@@ -477,9 +498,6 @@ class ArepoTracerOutput:
 					sys.exit("Size of tracer data block given in file is not the same as in code!")
 
 				# cgs scaling of the variable
-				B = np.sqrt(M * V**2 / L**3) # B scaling
-				N = M / (PROTONMASS * L**3) # Gas Density Scaling
-				E = M * V**2 / L**3 # Energy Density Scaling
 				self._var_cgs_factor = [1, L/V, 1, M, L,\
 										N, V**2, B, E, 1,\
 										E, N, N, V, L/V,\
@@ -504,14 +522,43 @@ class ArepoTracerOutput:
 					sys.exit("Size of tracer data block given in file is not the same as in code!")
 
 				# cgs scaling of the variable
-				B = np.sqrt(M * V**2 / L**3) # B scaling
-				N = M / (PROTONMASS * L**3) # Gas Density Scaling
-				E = M * V**2 / L**3 # Energy Density Scaling
 				self._var_cgs_factor = [1, L/V, 1, M, L,\
 										N, V**2, B, E, 1,\
 										E, N, N, V, L/V,\
 										1, 1, 1, V/L, 1,\
 										1]
+
+			elif self._version == 201903:
+				self._var_name = ['pos',  'n_gas', 'u_therm', 'eps_photon']
+				self._var_dtype = [np.ndarray, np.float32, np.float32, np.float32]
+				self._var_cgs_factor = [L, N, V**2, E]
+
+				if self._flag_cosmic_ray_shock_acceleration:
+					np.append(self._var_name, ['B', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',
+											   'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir'])
+
+					np.append(self._var_dtype, [np.ndarray, np.int32, np.float32, np.float32,
+											   np.float32, np.float32, np.float32, np.ndarray])
+
+					np.append(self._var_cgs_factor, [B, 1, E, N,
+													 N, V, L/V,	1])
+
+					if self._flag_cosmic_ray_magnetic_obliquity:
+						  np.append(self._var_name, 'theta')
+						  np.append(self._var_dtype, np.float32)
+						  np.append(self._var_cgs_factor, 1)
+
+
+				else:
+					np.append(self._var_name, 'B')
+					np.append(self._var_dtype, np.float32)
+					np.append(self._var_cgs_factor, B)
+
+
+				if self._flag_cosmic_ray_sn_injection:
+					np.append(self._var_name, ['CReInjection', 'injRate', 'alphaInj', 'pInj'])
+					np.append(self._var_dtype, [np.int32,   np.float32, np.float32, np.float32])
+					np.append(self._var_cgs_factor, [1, V/L, 1, 1])
 
 			else:
 				sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
