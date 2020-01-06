@@ -3,6 +3,7 @@ import struct
 import sys
 from Physics import PROTONMASS
 from os.path import isfile
+from matplotlib.cbook import flatten 
 
 ####################################################################################################
 # class which handles the parameters given via files to the C program
@@ -415,9 +416,9 @@ class ArepoTracerOutput:
 			
 			# definitions from arepo's Config.sh file
 			# only from version 2019-03 stored in tracer particle file
-			self._flag_cosmic_ray_shock_acceleration = True
-			self._flag_cosmic_ray_magnetic_obliquity = True
-			self._flag_cosmic_ray_sn_injection = True
+			self.flag_cosmic_ray_shock_acceleration = True
+			self.flag_cosmic_ray_magnetic_obliquity = True
+			self.flag_cosmic_ray_sn_injection = True
 
 			# Reading first block with unit system
 			self._traceroutput_headersize = int(struct.unpack('i', f.read(size_i))[0])
@@ -452,16 +453,17 @@ class ArepoTracerOutput:
 				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
 				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
 				self.nPart                    = struct.unpack('i', f.read(size_i))[0]
-				self._flag_cosmic_ray_shock_acceleration = bool(struct.unpack('i', f.read(size_i))[0])
-				self._flag_cosmic_ray_magnetic_obliquity = bool(struct.unpack('i', f.read(size_i))[0])
-				self._flag_cosmic_ray_sn_injection = bool(struct.unpack('i', f.read(size_i))[0])
-				self.ID = np.ndarray(self.nPart, dtype=np.uint32)
-				self.ID[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))[:]
+				self.flag_cosmic_ray_shock_acceleration = bool(struct.unpack('i', f.read(size_i))[0])
+				self.flag_cosmic_ray_magnetic_obliquity = bool(struct.unpack('i', f.read(size_i))[0])
+				self.flag_cosmic_ray_sn_injection = bool(struct.unpack('i', f.read(size_i))[0])
 				self.TracerMass = np.ndarray(self.nPart, dtype=np.float32)
 				self.TracerMass[:] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))[:]
+				self.ID = np.ndarray(self.nPart, dtype=np.uint32)
+				self.ID[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))[:]
 				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]		
 
-			if  int(struct.unpack('i', f.read(size_i))[0]) != self._traceroutput_headersize:
+			end_integer = int(struct.unpack('i', f.read(size_i))[0])
+			if end_integer != self._traceroutput_headersize:
 				sys.exit("Header block not correctly enclosed")
 
 			L = self.UnitLength_in_cm
@@ -529,36 +531,40 @@ class ArepoTracerOutput:
 										1]
 
 			elif self._version == 201903:
-				self._var_name = ['pos',  'n_gas', 'u_therm', 'eps_photon']
-				self._var_dtype = [np.ndarray, np.float32, np.float32, np.float32]
-				self._var_cgs_factor = [L, N, V**2, E]
+				self._var_name = ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
+				self._var_dtype = [np.float64, np.ndarray, np.float32, np.float32, np.float32]
+				self._var_cgs_factor = [L/V, L, N, V**2, E]
 
-				if self._flag_cosmic_ray_shock_acceleration:
-					np.append(self._var_name, ['B', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',
+				if self.flag_cosmic_ray_shock_acceleration:
+					self._var_name.append(['B', 'ShockFlag', 'eps_CRpShockInj', 'n_gasPreShock',
 											   'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir'])
 
-					np.append(self._var_dtype, [np.ndarray, np.int32, np.float32, np.float32,
+					self._var_dtype.append([np.ndarray, np.int32, np.float32, np.float32,
 											   np.float32, np.float32, np.float32, np.ndarray])
 
-					np.append(self._var_cgs_factor, [B, 1, E, N,
+					self._var_cgs_factor.append([B, 1, E, N,
 													 N, V, L/V,	1])
 
-					if self._flag_cosmic_ray_magnetic_obliquity:
-						  np.append(self._var_name, 'theta')
-						  np.append(self._var_dtype, np.float32)
-						  np.append(self._var_cgs_factor, 1)
+					if self.flag_cosmic_ray_magnetic_obliquity:
+						  self._var_name.append('theta')
+						  self._var_dtype.append(np.float32)
+						  self._var_cgs_factor.append(1)
 
 
 				else:
-					np.append(self._var_name, 'B')
-					np.append(self._var_dtype, np.float32)
-					np.append(self._var_cgs_factor, B)
+					self._var_name.append('B')
+					self._var_dtype.append(np.float32)
+					self._var_cgs_factor.append(B)
 
 
-				if self._flag_cosmic_ray_sn_injection:
-					np.append(self._var_name, ['CReInjection', 'injRate', 'alphaInj', 'pInj'])
-					np.append(self._var_dtype, [np.int32,   np.float32, np.float32, np.float32])
-					np.append(self._var_cgs_factor, [1, V/L, 1, 1])
+				if self.flag_cosmic_ray_sn_injection:
+					self._var_name.append(['CReInjection', 'injRate', 'alphaInj', 'pInj'])
+					self._var_dtype.append([np.int32,   np.float32, np.float32, np.float32])
+					self._var_cgs_factor.append([1, V/L, 1, 1])
+
+				self._var_name = list(flatten(self._var_name))
+				self._var_dtype = list(flatten(self._var_dtype))
+				self._var_cgs_factor = list(flatten(self._var_cgs_factor))				
 
 			else:
 				sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
@@ -572,7 +578,11 @@ class ArepoTracerOutput:
  
 			while(buf):
 				# move pointer forward
-				f.seek(self.nPart * self._traceroutput_tracersize, 1) 
+				if self._version <= 201902:
+					f.seek(self.nPart * self._traceroutput_tracersize, 1)
+				else: # version 201903
+					f.seek(self._traceroutput_tracersize, 1)
+					
 				if  int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
 					sys.exit("data not in block #{:i} not correctly enclosed".format(self.nSnap))
 
@@ -622,7 +632,9 @@ class ArepoTracerOutput:
 				for i in np.arange(len(self._var_name)):
 					# Create nPart x nSnap size arrays for all variables if var_store element is true
 					if self._var_store[i]:
-						if self._var_dtype[i] is not np.ndarray: # scalar variable
+						if self._var_name[i] == 'time' and self._version >= 201903:
+							setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
+						elif self._var_dtype[i] is not np.ndarray: # scalar variable
 							setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart), dtype=self._var_dtype[i]))
 						else: # 3D Vector
 							setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart, 3), dtype=np.float32))
@@ -631,7 +643,9 @@ class ArepoTracerOutput:
 				for i in np.arange(len(self._var_name)):
 					# Create nPart x nSnap size arrays for all variables if var_store element is true
 					if self._var_store[i]:
-						if self._var_dtype[i] is not np.ndarray: # scalar
+						if self._var_name[i] == 'time' and self._version >= 201903:
+							setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
+						elif self._var_dtype[i] is not np.ndarray: # scalar
 							setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
 						else: # 3D Vector
 							setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
@@ -651,7 +665,10 @@ class ArepoTracerOutput:
 						
 						if self._var_store[i]:
 							# if variable should be stored, check the type and read from file in the correct format
-							if self._var_dtype[i] == np.uint32:
+							if self._var_name[i] == 'time' and self._version >= 201903:
+								self.time[n] = struct.unpack('d', f.read(size_d))[0] #We assume time to be of dtype=np.float64
+								
+							elif self._var_dtype[i] == np.uint32:
 								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[n, :] = struct.unpack( ... )
 							elif self._var_dtype[i] == np.int32:
 								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
@@ -666,7 +683,9 @@ class ArepoTracerOutput:
 								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 						else:
 							#if variable should not be stored, skip right number of bytes in file
-							if self._var_dtype[i] == np.uint32:
+							if self._var_name[i] == 'time' and self._version >= 201903:
+								f.seek(size_d, 1) # We assume time to be of dtype=np.float64
+							elif self._var_dtype[i] == np.uint32:
 								f.seek(size_I * self.nPart, 1)
 							elif self._var_dtype[i] == np.int32:
 								f.seek(size_i * self.nPart, 1)
@@ -700,7 +719,10 @@ class ArepoTracerOutput:
 								# jump to the position of the desired particle in the variable block
 								# read in the right amount of bytes
 								# jump to end of the variable block
-								if self._var_dtype[i] == np.uint32:
+								if self._var_name[i] == 'time' and self._version >= 201903:
+									self.time[n] = struct.unpack('d', f.read(size_d))[0] #We assume time to be of dtype=np.float64
+									
+								elif self._var_dtype[i] == np.uint32:
 									f.seek(pos * size_I, 1)
 									getattr(self, self._var_name[i])[n, :] = struct.unpack('I', f.read(size_I))[0]
 									f.seek(size_I * (nPartInFile - pos - 1), 1)
@@ -730,7 +752,9 @@ class ArepoTracerOutput:
 									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 							else:
 								#if variable should not be stored, skip right number of bytes in file
-								if self._var_dtype[i] == np.uint32:
+								if self._var_name[i] == 'time' and self._version >= 201903:
+									f.seek(size_d, 1) #We assume time to be of dtype=np.float64								
+								elif self._var_dtype[i] == np.uint32:
 									f.seek(size_I * nPartInFile, 1)
 								elif self._var_dtype[i] == np.int32:
 									f.seek(size_i * nPartInFile, 1)
@@ -760,7 +784,9 @@ class ArepoTracerOutput:
 								# if variable should be stored, check the entire block of the variable
 								# convert to numpy array which supports indexing with arrays, slices, etc.
 								# (return type of struct.unpack is 'tuple')
-								if self._var_dtype[i] == np.uint32:
+								if self._var_dtype[i] == np.float64:
+									self.time[n] = np.array(struct.unpack('d', f.read(size_d)), dtype=np.float64)[0] #We assume time to be of dtype=np.float64
+								elif self._var_dtype[i] == np.uint32:
 									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
 								elif self._var_dtype[i] == np.int32:
 									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
@@ -776,7 +802,9 @@ class ArepoTracerOutput:
 
 							else:
 								#if variable should not be stored, skip right number of bytes in file
-								if self._var_dtype[i] == np.uint32:
+								if self._var_name[i] == 'time' and self._version >= 201903:
+									f.seek(size_d, 1) #We assume time to be of dtype=np.float64
+								elif self._var_dtype[i] == np.uint32:
 									f.seek(size_I * nPartInFile, 1)
 								elif self._var_dtype[i] == np.int32:
 									f.seek(size_i * nPartInFile, 1)
@@ -838,6 +866,11 @@ class ArepoTracerOutput:
 		ret.UnitLength_in_cm = self.UnitLength_in_cm
 		ret.UnitMass_in_g = self.UnitMass_in_g
 		ret.UnitVelocity_in_cm_per_s = self.UnitVelocity_in_cm_per_s
+		ret._version = self._version
+		ret.flag_cosmic_ray_shock_acceleration = self.flag_cosmic_ray_shock_acceleration
+		ret.flag_cosmic_ray_magnetic_obliquity = self.flag_cosmic_ray_magnetic_obliquity
+		ret.flag_cosmic_ray_sn_injection = self.flag_cosmic_ray_sn_injection
+		
 
 		ret._var_name = self._var_name
 		ret._var_dtype = self._var_dtype
@@ -875,9 +908,13 @@ class ArepoTracerOutput:
 			raise TypeError('Tuple Index must be of length 2, not {}'.format(len(key)))
 
 		
-		for i in np.arange(len(self._var_name)):
+		for i in np.arange(len(self._var_name)):			
 			if self._var_store[i]:
-				setattr(ret, ret._var_name[i], getattr(self, self._var_name[i]).__getitem__(key))
+				if self._var_name[i] == 'time' and self._version >= 201903:
+					if len(key) == 2:
+						ret.time = self.time.__getitem__(key[1])
+				else:
+					setattr(ret, ret._var_name[i], getattr(self, self._var_name[i]).__getitem__(key))
 
 		return ret
 	
@@ -895,7 +932,6 @@ class ArepoTracerOutput:
 		else:
 			f_op = 'rb'
 
-
 		with open(file_name, f_op) as f:
 			# Store header block
 			f.write(struct.pack('i', self._traceroutput_headersize))
@@ -903,16 +939,27 @@ class ArepoTracerOutput:
 			f.write(struct.pack('d', self.UnitLength_in_cm))
 			f.write(struct.pack('d', self.UnitMass_in_g))
 			f.write(struct.pack('d', self.UnitVelocity_in_cm_per_s))
-			f.write(struct.pack('i', self.nPart))
-			f.write(struct.pack('i', self._traceroutput_tracersize))
-			f.write(struct.pack('i', self._traceroutput_headersize))
+			if self._version <= 201902:
+				f.write(struct.pack('i', self.nPart))
+				f.write(struct.pack('i', self._traceroutput_tracersize))
+				blocksize = self.nPart * self._traceroutput_tracersize
 
-			blocksize = self.nPart * self._traceroutput_tracersize
+			else: # version >= 201903
+				f.write(struct.pack('i', int(self.flag_cosmic_ray_shock_acceleration)))
+				f.write(struct.pack('i', int(self.flag_cosmic_ray_magnetic_obliquity)))
+				f.write(struct.pack('i', int(self.flag_cosmic_ray_sn_injection)))
+				f.write(struct.pack('{:d}f', self.TracerMass[:]))
+				f.write(struct.pack('{:d}I', self.ID[:]))
+				blocksize = self._traceroutput_tracersize
+
+			f.write(struct.pack('i', self._traceroutput_headersize))
 
 			for n in np.arange(self.nSnap):
 				f.write(struct.pack('i', blocksize))
 				for i in np.arange(len(self._var_name)):
-					if self._var_dtype[i] == np.uint32:
+					if self._var_name == 'time' and self._version >= 201903:
+						f.write(struct.pack('d', self.time[n])) 					
+					elif self._var_dtype[i] == np.uint32:
 						f.write(struct.pack('{:d}I'.format(self.nPart), *getattr(self, self._var_name[i])[n, :])) # equivalent to e.g. struct.pack(... , self.ID[n, :] )
 					elif self._var_dtype[i] == np.int32:
 						f.write(struct.pack('{:d}i'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
