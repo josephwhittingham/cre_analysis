@@ -753,7 +753,7 @@ class ArepoTracerOutput:
 					f.seek(self._traceroutput_tracersize, 1)
 					
 				if  int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
-					sys.exit("data not in block #{:i} not correctly enclosed".format(self.nSnap))
+					sys.exit("data not in block #{:d} not correctly enclosed".format(self.nSnap))
 
 				self.nSnap += 1
 				if read_only_ic or last_snap == self.nSnap:
