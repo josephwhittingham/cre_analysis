@@ -463,15 +463,16 @@ class CrestSnapshot:
 class ArepoTracerOutput:
 	"""
 	Class to read in and handle the output for the tracer particles from an AREPO simulation.
-	The header will be read in to provide basic information about the used unit system, as
+	The header file will be read in to provide basic information about the used unit system, as
 	all quantities will be in code units of the AREPO simulation.
+	If numbers of data files are given, data is read in.
 	All variables will be stored as (nPart, nSnap) arrays unless only one specific particle
 	is read in then the arrays have the shape (nSnap, ).
 
 	Example:
 	   Load a tracer output with path and name to file by, e.g.,
 
-	      $ data = ArepoTracerOutput("path_to_file/file_name.dat")
+	      $ data = ArepoTracerOutput("path_to_file/fileBase")
 
 	   and access all x positions
 
@@ -486,7 +487,7 @@ class ArepoTracerOutput:
 
 	
 	# instance variables
-	def __init__(self, file_name = None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None):
+	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
@@ -494,18 +495,33 @@ class ArepoTracerOutput:
 		If a path to a file is provided the file will be read in 
 		
 		Args:
-		   file_name (str): Path of file to be read
+		   file_base (str): Base file name (version >= 2020-01) or full file name (version <= 2019-03)
+
+		   file_numbers (int or list): File numbers of data files to be read (version >= 2020-01)
+		       Default: None (No data files to be read)
 		   
 		   cgs_units (bool): Flag if the values should be converted to cgs units immediately
 
 		   read_only_ic (bool): Read only header and 0th snapshot/initial conditions
 
-		   first_snap (int): First snapshot to be read in
+		   first_snap (int): First snapshot to be read in (relative to first file number)
 
-		   last_snap (int): Last snapshot to be read in (exclusive)
+		   last_snap (int): Last snapshot to be read in (exclusive, relative to first file number)
 
 		   specific_fields (list): List of strings of the variable which should be stored, 
-		                           e.g., ['ID', 'time']. Of no list is given, all variables are read.
+		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
+		      Possible variables names are:
+		       - standard: ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
+		       - shock acceleration: ['B', 'ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
+									  'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir']
+		       - magnetic obliquity: ['theta']
+		       - SN injection: ['eps_CRp_inj']
+		      Please note that some variable blocks are only available if the code was compiled
+              and run with these configurations.
+
+		    splitted_files (bool): Separate header and data files (default, version >= 2020-01).
+		       Chose 'False' if file of version <= 2019-03. Default: True
+		
 		""" 
 		
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
@@ -524,8 +540,11 @@ class ArepoTracerOutput:
 		self._traceroutput_tracersize = None
 		self._traceroutput_headersize = None
 
-		if file_name is not None:
-			self.read_data(file_name, version=version, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic, specific_particles=specific_particles, first_snap=first_snap, last_snap=last_snap, specific_fields=specific_fields)
+		if file_base is not None:
+			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
+
+			self.read_data(file_base, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic,
+						   specific_particles=specific_particles, first_snap=first_snap, last_snap=last_snap, specific_fields=specific_fields)
 
 	@property
 	def var_name(self):
@@ -552,8 +571,13 @@ class ArepoTracerOutput:
 		""" List of cgs conversion factors """
 		return self._var_cgs_factors
 
-	def read_data(self, file_name, version=None, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, first_snap = None, last_snap = None, specific_fields=None, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.):
-		""" Read in the data from file. This function is automatically called if class constructor is called with the file name"""
+	def read_header(self, file_base, verbose = False, splitted_files=True):
+		""" Read in the header data from file. This function is automatically called if class constructor is called with the file name"""
+
+		if splitted_files: # Standard for version >= 2020-01
+			file_name = "{:}_header.dat".format(file_base)
+		else:
+			file_name = file_base
 		
 		with open(file_name,'rb') as f:
 			if verbose:
@@ -616,7 +640,7 @@ class ArepoTracerOutput:
 				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
 
 			else:
-				# version 2019-03
+				# version 2019-03 or newer
 				self._version                 = struct.unpack('i', f.read(size_i))[0]
 				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
 				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
@@ -699,7 +723,7 @@ class ArepoTracerOutput:
 										1, 1, 1, V/L, 1,\
 										1]
 
-			elif self._version == 201903:
+			elif self._version >= 201903:
 				self._var_name = ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
 				self._var_dtype = [np.float64, np.ndarray, np.float32, np.float32, np.float32]
 				self._var_cgs_factor = [L/V, L, N, V**2, E]
@@ -737,267 +761,340 @@ class ArepoTracerOutput:
 
 			else:
 				sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
-			
-			
-			# Reading block with data values
-			blocksize = int(struct.unpack('i',f.read(size_i))[0])
-			nPartInFile = self.nPart
-			self.nSnap	= 0
-			buf 	= 1 #if buf > 0 or True next block will be read		   					
- 
-			while(buf):
-				# move pointer forward
-				if self._version <= 201902:
-					f.seek(self.nPart * self._traceroutput_tracersize, 1)
-				else: # version 201903
-					f.seek(self._traceroutput_tracersize, 1)
-					
-				if  int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
-					sys.exit("data not in block #{:d} not correctly enclosed".format(self.nSnap))
-
-				self.nSnap += 1
-				if read_only_ic or last_snap == self.nSnap:
-					buf = False
-				else:
-					buf = f.read(size_i)
-
-			if specific_particles is not None:
-				if type(specific_particles) is int:
-					self.nPart = 1
-				else:
-					self.nPart = len(np.arange(self.nPart)[specific_particles])
-
-			# go back to the beginning of the file
-			f.seek(3*size_i + self._traceroutput_headersize, 0)
-
-			if first_snap is not None:
-				self.nSnap -= first_snap
-		
-			buf = 0
-			if verbose:
-				print("Number of particles: {:d}".format(self.nPart))
-				print("Number of snapshots: {:d}".format(self.nSnap))
-
-			if len(self._var_name) != len(self._var_dtype) or len(self._var_name) != len(self._var_cgs_factor):
-				sys.exit("Arrays of variable names and types need to have the same length")
-
-
-			# will the variable be stored or not
-			self._var_store = np.ones(len(self._var_name), dtype=bool) # array filled with True
-
-
-			if specific_fields is not None:
-				# make no storage default, invert var_store array
-				np.logical_not(self._var_store, out=self._var_store)
-
-				for sf in specific_fields:
-					if sf in self._var_name:
-						self._var_store[ self._var_name.index(sf) ] = True
-					else:
-						sys.exit("Variable '{:}' does not exist in tracer output!".format(sf))
-					
-			
-			if type(specific_particles) is not int:
-				for i in np.arange(len(self._var_name)):
-					# Create nPart x nSnap size arrays for all variables if var_store element is true
-					if self._var_store[i]:
-						if self._var_name[i] == 'time' and self._version >= 201903:
-							setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
-						elif self._var_dtype[i] is not np.ndarray: # scalar variable
-							setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart), dtype=self._var_dtype[i]))
-						else: # 3D Vector
-							setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart, 3), dtype=np.float32))
-
-			else:
-				for i in np.arange(len(self._var_name)):
-					# Create nPart x nSnap size arrays for all variables if var_store element is true
-					if self._var_store[i]:
-						if self._var_name[i] == 'time' and self._version >= 201903:
-							setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
-						elif self._var_dtype[i] is not np.ndarray: # scalar
-							setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
-						else: # 3D Vector
-							setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
-
-
-
-			if first_snap is not None:
-				# skip some lines
-				f.seek(first_snap * (blocksize + 2*size_i), 1) 
-
-			if specific_particles is None:
-				# read all the data spec
-				for n in np.arange(self.nSnap):
-
-					# loop over all possible variables
-					for i in np.arange(len(self._var_name)):
-						
-						if self._var_store[i]:
-							# if variable should be stored, check the type and read from file in the correct format
-							if self._var_name[i] == 'time' and self._version >= 201903:
-								self.time[n] = struct.unpack('d', f.read(size_d))[0] #We assume time to be of dtype=np.float64
-								
-							elif self._var_dtype[i] == np.uint32:
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[n, :] = struct.unpack( ... )
-							elif self._var_dtype[i] == np.int32:
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-							elif self._var_dtype[i] == np.float32:
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-							elif self._var_dtype[i] == np.float64:
-								getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-							elif self._var_dtype[i] == np.ndarray:
-								for j in np.arange(3):
-									getattr(self, self._var_name[i])[n, :, j] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-							else:
-								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-						else:
-							#if variable should not be stored, skip right number of bytes in file
-							if self._var_name[i] == 'time' and self._version >= 201903:
-								f.seek(size_d, 1) # We assume time to be of dtype=np.float64
-							elif self._var_dtype[i] == np.uint32:
-								f.seek(size_I * self.nPart, 1)
-							elif self._var_dtype[i] == np.int32:
-								f.seek(size_i * self.nPart, 1)
-							elif self._var_dtype[i] == np.float32:
-								f.seek(size_f * self.nPart, 1)
-							elif self._var_dtype[i] == np.float64:
-								f.seek(size_d * self.nPart, 1)
-							elif self._var_dtype[i] == np.ndarray:
-								f.seek(3 * size_f * self.nPart, 1)
-							else:
-								sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-					if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
-						sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
-
-					f.seek(size_i, 1)
-			else:
-				if type(specific_particles) is np.ndarray or type(specific_particles) is list:
-					if len(specific_particles) == 1:
-						specific_particles = specific_particles[0]
-
-				if type(specific_particles) is int:
-					pos = specific_particles
-					# read single data
-					for n in np.arange(self.nSnap):
-						# loop over all possible variables
-						for i in np.arange(len(self._var_name)):
-
-							if self._var_store[i]:
-								# if variable should be stored, check the type and read from file in the correct format
-								# jump to the position of the desired particle in the variable block
-								# read in the right amount of bytes
-								# jump to end of the variable block
-								if self._var_name[i] == 'time' and self._version >= 201903:
-									self.time[n] = struct.unpack('d', f.read(size_d))[0] #We assume time to be of dtype=np.float64
-									
-								elif self._var_dtype[i] == np.uint32:
-									f.seek(pos * size_I, 1)
-									getattr(self, self._var_name[i])[n, :] = struct.unpack('I', f.read(size_I))[0]
-									f.seek(size_I * (nPartInFile - pos - 1), 1)
-
-								elif self._var_dtype[i] == np.int32:
-									f.seek(pos * size_i, 1)
-									getattr(self, self._var_name[i])[n, :] = struct.unpack('i', f.read(size_i))[0]
-									f.seek(size_i * (nPartInFile - pos - 1), 1)
-
-								elif self._var_dtype[i] == np.float32:
-									f.seek(pos * size_f, 1)
-									getattr(self, self._var_name[i])[n, :] = struct.unpack('f', f.read(size_f))[0]
-									f.seek(size_f * (nPartInFile - pos - 1), 1)
-
-								elif self._var_dtype[i] == np.float64:
-									f.seek(pos * size_d, 1)
-									getattr(self, self._var_name[i])[n, :] = struct.unpack('d', f.read(size_d))[0]
-									f.seek(size_d * (nPartInFile - pos - 1), 1)
-
-								elif self._var_dtype[i] == np.ndarray:
-									for j in np.arange(3):
-										f.seek(pos * size_f, 1)
-										getattr(self, self._var_name[i])[n, :, j] = struct.unpack('f', f.read(size_f))[0]
-										f.seek(size_f * (nPartInFile - pos - 1), 1)
-
-								else:
-									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-							else:
-								#if variable should not be stored, skip right number of bytes in file
-								if self._var_name[i] == 'time' and self._version >= 201903:
-									f.seek(size_d, 1) #We assume time to be of dtype=np.float64								
-								elif self._var_dtype[i] == np.uint32:
-									f.seek(size_I * nPartInFile, 1)
-								elif self._var_dtype[i] == np.int32:
-									f.seek(size_i * nPartInFile, 1)
-								elif self._var_dtype[i] == np.float32:
-									f.seek(size_f * nPartInFile, 1)
-								elif self._var_dtype[i] == np.float64:
-									f.seek(size_d * nPartInFile, 1)
-								elif self._var_dtype[i] == np.ndarray:
-									f.seek(3 * size_f * nPartInFile, 1)
-								else:
-									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-						if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
-							sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
-
-						f.seek(size_i, 1)
-
-
-				else:
-					# read all the data but just take a slice out of it
-					for n in np.arange(self.nSnap):
-
-						# loop over all possible variables
-						for i in np.arange(len(self._var_name)):
-
-							if self._var_store[i]:
-								# if variable should be stored, check the entire block of the variable
-								# convert to numpy array which supports indexing with arrays, slices, etc.
-								# (return type of struct.unpack is 'tuple')
-								if self._var_dtype[i] == np.float64:
-									self.time[n] = np.array(struct.unpack('d', f.read(size_d)), dtype=np.float64)[0] #We assume time to be of dtype=np.float64
-								elif self._var_dtype[i] == np.uint32:
-									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
-								elif self._var_dtype[i] == np.int32:
-									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
-								elif self._var_dtype[i] == np.float32:
-									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
-								elif self._var_dtype[i] == np.float64:
-									getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile)), dtype=np.float64)[specific_particles]
-								elif self._var_dtype[i] == np.ndarray:
-									for j in np.arange(3):
-										getattr(self, self._var_name[i])[n, :, j] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
-								else: 
-									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-							else:
-								#if variable should not be stored, skip right number of bytes in file
-								if self._var_name[i] == 'time' and self._version >= 201903:
-									f.seek(size_d, 1) #We assume time to be of dtype=np.float64
-								elif self._var_dtype[i] == np.uint32:
-									f.seek(size_I * nPartInFile, 1)
-								elif self._var_dtype[i] == np.int32:
-									f.seek(size_i * nPartInFile, 1)
-								elif self._var_dtype[i] == np.float32:
-									f.seek(size_f * nPartInFile, 1)
-								elif self._var_dtype[i] == np.float64:
-									f.seek(size_d * nPartInFile, 1)
-								elif self._var_dtype[i] == np.ndarray:
-									f.seek(3 * size_f * nPartInFile, 1)
-								else:
-									sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-						if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
-							sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
-
-						f.seek(size_i, 1)
 
 			f.close()
 			if verbose:
-				print("Data was successfully read")
+				print("Header was successfully read")
+
+	def read_data(self, file_base, file_numbers=None, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, first_snap = None, last_snap = None, specific_fields=None):
+		""" Read in the header data from file. This function is automatically called if class constructor is called with the file name"""
+
+		if self.version <= 201903:
+			file_names = [file_base]
+		else: # version >= 202001
+			if file_numbers is not None:
+				if type(file_numbers) is int:
+					file_numbers = [file_numbers]
+							
+				file_names = ["{:}_file_{:03d}.dat".format(file_base, num) for num in file_numbers]
+			else:
+				file_names = []
+					
+		
+		if verbose:
+			print("Read Arepo's tracer output from file '{}'".format(file_name))
+
+		size_i, size_I, size_f, size_d = check_encoding()
 
 
-			if cgs_units:
-				self.scale_to_cgs_units(verbose)
+		# Version dependend configuration
+		# we need to make sure that old simulations can be read in
+
+		# Reading block with data values
+		nPartInFile = self.nPart
+		self.nSnap	= 0
+	
+		for file_name in file_names:			
+			with open(file_name,'rb') as f:
+				if self._version <= 201903:
+					# Jump over headerblock
+					f.seek(2*size_i + self._traceroutput_headersize, 0)
+					
+				buf = f.read(size_i) # Read starting integer of first data block
+				if buf: #if buf > 0 or True next block will be read
+					blocksize = int(struct.unpack('i', buf)[0])
+					
+					
+					# Jump over data blocks and check if starting and trailing integer are the same
+					while(buf):
+						# move pointer forward
+						if self._version <= 201902:
+							f.seek(self.nPart * self._traceroutput_tracersize, 1)
+						else: # version >= 201903
+							f.seek(self._traceroutput_tracersize, 1)
+
+						if  int(struct.unpack('i',f.read(size_i))[0]) != blocksize:
+							sys.exit("data not in block #{:d} not correctly enclosed".format(self.nSnap))
+
+						self.nSnap += 1
+						if read_only_ic or last_snap == self.nSnap:
+							buf = False
+							break # stop reading
+						else:
+							buf = f.read(size_i)
+				else:
+					print("No data block was found")
+					
+				f.close()
+	
+		if specific_particles is not None:
+			if type(specific_particles) is int:
+				self.nPart = 1
+			else:
+				self.nPart = len(np.arange(self.nPart)[specific_particles])
+
+		if first_snap is not None:
+			self.nSnap -= first_snap
+
+		if verbose:
+			print("Number of particles: {:d}".format(self.nPart))
+			print("Number of snapshots: {:d}".format(self.nSnap))
+
+		if len(self._var_name) != len(self._var_dtype) or len(self._var_name) != len(self._var_cgs_factor):
+			sys.exit("Arrays of variable names and types need to have the same length. Check read_header function")
+
+
+		# will the variable be stored or not
+		self._var_store = np.ones(len(self._var_name), dtype=bool) # array filled with True
+
+
+		if specific_fields is not None:
+			# make no storage default, invert var_store array
+			np.logical_not(self._var_store, out=self._var_store)
+
+			for sf in specific_fields:
+				if sf in self._var_name:
+					self._var_store[ self._var_name.index(sf) ] = True
+				else:
+					sys.exit("Variable '{:}' does not exist in tracer output!".format(sf))
+
+
+		if type(specific_particles) is not int:
+			for i in np.arange(len(self._var_name)):
+				# Create nPart x nSnap size arrays for all variables if var_store element is true
+				if self._var_store[i]:
+					if self._var_name[i] == 'time' and self._version >= 201903:
+						setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
+					elif self._var_dtype[i] is not np.ndarray: # scalar variable
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart), dtype=self._var_dtype[i]))
+					else: # 3D Vector
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart, 3), dtype=np.float32))
+
+		else:
+			for i in np.arange(len(self._var_name)):
+				# Create nPart x nSnap size arrays for all variables if var_store element is true
+				if self._var_store[i]:
+					if self._var_name[i] == 'time' and self._version >= 201903:
+						setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
+					elif self._var_dtype[i] is not np.ndarray: # scalar
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
+					else: # 3D Vector
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
+
+
+		snapRead = 0 # number of already read in snapshots
+		for file_name, file_num in zip(file_names, np.arange(len(file_names))):
+			with open(file_name,'rb') as f:
+				if verbose:
+					print("Opening data file #{:d}".format(file_num))
+				
+				if self._version <= 201903:
+					# jump over header block
+					f.seek(2*size_i + self._traceroutput_headersize, 0)
+
+				if file_num == 0 and first_snap is not None:
+					# skip some lines
+					blocksize = int(struct.unpack('i', f.read(size_i))[0])
+					f.seek(first_snap * (blocksize + 2*size_i) - size_i, 1) 
+
+				buf = f.read(size_i) # Read starting integer of first data block
+				if buf: #if buf > 0 or True next block will be read
+					blocksize = int(struct.unpack('i', buf)[0])
+
+					if specific_particles is None:
+						# read all the data spec
+						for n in np.arange(snapRead, self.nSnap):
+
+							# loop over all possible variables
+							for i in np.arange(len(self._var_name)):
+
+								if self._var_store[i]:
+									# if variable should be stored, check the type and read from file in the correct format
+									if self._var_name[i] == 'time' and self._version >= 201903:
+										self.time[n] = struct.unpack('d', f.read(size_d))[0] #We assume time to be of dtype=np.float64
+
+									elif self._var_dtype[i] == np.uint32:
+										getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[n, :] = struct.unpack( ... )
+									elif self._var_dtype[i] == np.int32:
+										getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
+									elif self._var_dtype[i] == np.float32:
+										getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+									elif self._var_dtype[i] == np.float64:
+										getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+									elif self._var_dtype[i] == np.ndarray:
+										for j in np.arange(3):
+											getattr(self, self._var_name[i])[n, :, j] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
+									else:
+										sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+								else:
+									#if variable should not be stored, skip right number of bytes in file
+									if self._var_name[i] == 'time' and self._version >= 201903:
+										f.seek(size_d, 1) # We assume time to be of dtype=np.float64
+									elif self._var_dtype[i] == np.uint32:
+										f.seek(size_I * self.nPart, 1)
+									elif self._var_dtype[i] == np.int32:
+										f.seek(size_i * self.nPart, 1)
+									elif self._var_dtype[i] == np.float32:
+										f.seek(size_f * self.nPart, 1)
+									elif self._var_dtype[i] == np.float64:
+										f.seek(size_d * self.nPart, 1)
+									elif self._var_dtype[i] == np.ndarray:
+										f.seek(3 * size_f * self.nPart, 1)
+									else:
+										sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+							if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
+								sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
+
+							# Read integer of next data block
+							buf = f.read(size_i)
+							if buf:
+								blocksize_next = int(struct.unpack('i', buf)[0])
+								if blocksize_next != blocksize:
+									sys.exit("Starting integer of block #{:d} differs from block before.".format(n+1))
+							else:
+								break								
+
+					else: # specific particles are chosen to be read in
+						if type(specific_particles) is np.ndarray or type(specific_particles) is list:
+							if len(specific_particles) == 1:
+								specific_particles = specific_particles[0]
+
+						if type(specific_particles) is int:
+							pos = specific_particles
+							# read single data
+							for n in np.arange(self.nSnap):
+								# loop over all possible variables
+								for i in np.arange(len(self._var_name)):
+
+									if self._var_store[i]:
+										# if variable should be stored, check the type and read from file in the correct format
+										# jump to the position of the desired particle in the variable block
+										# read in the right amount of bytes
+										# jump to end of the variable block
+										if self._var_name[i] == 'time' and self._version >= 201903:
+											self.time[n] = struct.unpack('d', f.read(size_d))[0] #We assume time to be of dtype=np.float64
+
+										elif self._var_dtype[i] == np.uint32:
+											f.seek(pos * size_I, 1)
+											getattr(self, self._var_name[i])[n, :] = struct.unpack('I', f.read(size_I))[0]
+											f.seek(size_I * (nPartInFile - pos - 1), 1)
+
+										elif self._var_dtype[i] == np.int32:
+											f.seek(pos * size_i, 1)
+											getattr(self, self._var_name[i])[n, :] = struct.unpack('i', f.read(size_i))[0]
+											f.seek(size_i * (nPartInFile - pos - 1), 1)
+
+										elif self._var_dtype[i] == np.float32:
+											f.seek(pos * size_f, 1)
+											getattr(self, self._var_name[i])[n, :] = struct.unpack('f', f.read(size_f))[0]
+											f.seek(size_f * (nPartInFile - pos - 1), 1)
+
+										elif self._var_dtype[i] == np.float64:
+											f.seek(pos * size_d, 1)
+											getattr(self, self._var_name[i])[n, :] = struct.unpack('d', f.read(size_d))[0]
+											f.seek(size_d * (nPartInFile - pos - 1), 1)
+
+										elif self._var_dtype[i] == np.ndarray:
+											for j in np.arange(3):
+												f.seek(pos * size_f, 1)
+												getattr(self, self._var_name[i])[n, :, j] = struct.unpack('f', f.read(size_f))[0]
+												f.seek(size_f * (nPartInFile - pos - 1), 1)
+
+										else:
+											sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+									else:
+										#if variable should not be stored, skip right number of bytes in file
+										if self._var_name[i] == 'time' and self._version >= 201903:
+											f.seek(size_d, 1) #We assume time to be of dtype=np.float64								
+										elif self._var_dtype[i] == np.uint32:
+											f.seek(size_I * nPartInFile, 1)
+										elif self._var_dtype[i] == np.int32:
+											f.seek(size_i * nPartInFile, 1)
+										elif self._var_dtype[i] == np.float32:
+											f.seek(size_f * nPartInFile, 1)
+										elif self._var_dtype[i] == np.float64:
+											f.seek(size_d * nPartInFile, 1)
+										elif self._var_dtype[i] == np.ndarray:
+											f.seek(3 * size_f * nPartInFile, 1)
+										else:
+											sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+								if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
+									sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
+
+								f.seek(size_i, 1)
+
+
+						else:
+							# read all the data but just take a slice out of it
+							for n in np.arange(snapRead, self.nSnap):
+
+								# loop over all possible variables
+								for i in np.arange(len(self._var_name)):
+
+									if self._var_store[i]:
+										# if variable should be stored, check the entire block of the variable
+										# convert to numpy array which supports indexing with arrays, slices, etc.
+										# (return type of struct.unpack is 'tuple')
+										if self._var_dtype[i] == np.float64:
+											self.time[n] = np.array(struct.unpack('d', f.read(size_d)), dtype=np.float64)[0] #We assume time to be of dtype=np.float64
+										elif self._var_dtype[i] == np.uint32:
+											getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}I'.format(nPartInFile), f.read(size_I * nPartInFile)), dtype=np.uint32)[specific_particles]
+										elif self._var_dtype[i] == np.int32:
+											getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}i'.format(nPartInFile), f.read(size_i * nPartInFile)), dtype=np.int32)[specific_particles]
+										elif self._var_dtype[i] == np.float32:
+											getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
+										elif self._var_dtype[i] == np.float64:
+											getattr(self, self._var_name[i])[n, :] = np.array(struct.unpack('{:d}d'.format(nPartInFile), f.read(size_d * nPartInFile)), dtype=np.float64)[specific_particles]
+										elif self._var_dtype[i] == np.ndarray:
+											for j in np.arange(3):
+												getattr(self, self._var_name[i])[n, :, j] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
+										else: 
+											sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+									else:
+										#if variable should not be stored, skip right number of bytes in file
+										if self._var_name[i] == 'time' and self._version >= 201903:
+											f.seek(size_d, 1) #We assume time to be of dtype=np.float64
+										elif self._var_dtype[i] == np.uint32:
+											f.seek(size_I * nPartInFile, 1)
+										elif self._var_dtype[i] == np.int32:
+											f.seek(size_i * nPartInFile, 1)
+										elif self._var_dtype[i] == np.float32:
+											f.seek(size_f * nPartInFile, 1)
+										elif self._var_dtype[i] == np.float64:
+											f.seek(size_d * nPartInFile, 1)
+										elif self._var_dtype[i] == np.ndarray:
+											f.seek(3 * size_f * nPartInFile, 1)
+										else:
+											sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+
+								if  int(struct.unpack('i', f.read(size_i))[0]) != blocksize:
+									sys.exit("Data in block #{:d} not correctly enclosed.".format(n))
+
+								# Read integer of next data block
+								buf = f.read(size_i)
+								if buf:
+									blocksize_next = int(struct.unpack('i', buf)[0])
+									if blocksize_next != blocksize:
+										sys.exit("Starting integer of block #{:d} differs from block before.".format(n+1))
+								else:
+									break
+
+						snapRead += n
+					
+				else:
+					print("No data block was found. If first_snap larger than number of Snapshots in first file, chose smaller first_snap and larger first file number.")
+
+				f.close()
+
+		if verbose:
+			print("Data was successfully read")
+
+		if cgs_units:
+			self.scale_to_cgs_units(verbose)
+				
 
 	def scale_to_cgs_units(self, verbose=False):
 		if not self.All_Units_in_cgs:
