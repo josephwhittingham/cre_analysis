@@ -1247,8 +1247,85 @@ class ArepoTracerOutput:
 
 			print("Succesfully stored Arepo tracer outputfile in '{:}'".format(file_name))
 				
-		
 
+def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start=0, stop=-1):
+	file_in = open(file_name_in,'rb')
+	header_fname = "{:}_header.dat".format(file_name_base)
+	
+	file_out = open(header_fname, 'wb')
+	size_i, size_I, size_f, size_d = check_encoding()
+
+	print("Splitting tracer file")
+	print("Input: {:}".format(file_name_in))
+	print("Header Output: {:}".format(header_fname))
+
+	# Write header block
+	traceroutput_headersize = int(struct.unpack('i', file_in.read(size_i))[0])
+	version = struct.unpack('i', file_in.read(size_i))[0]
+	file_out.write(struct.pack('i', traceroutput_headersize))
+	version_new = 202001
+	file_out.write(struct.pack('i', version_new))
+	block = file_in.read(traceroutput_headersize - size_i)
+	file_out.write(block)
+	file_out.write(struct.pack('i', traceroutput_headersize))
+	del block
+	trailing_integer = struct.unpack('i', file_in.read(size_i))[0]
+	if trailing_integer != traceroutput_headersize:
+		sys.exit("Input Header area not correctly enclosed")
+	
+	file_out.close()
+	
+	### jump over sum blocks
+	if start > 0:
+		blocksize = int(struct.unpack('i', file_in.read(size_i))[0])
+		file_in.seek(start*(blocksize + 2*size_i) - size_i, 1)
+
+	current_file_num = start // MaxStepsPerFile
+	data_fname = "{:}_file_{:03d}.dat".format(file_name_base, current_file_num)
+	file_out = open(data_fname, 'wb')
+	print("Starting data block transfer")
+	print("--------------------------------------------------")
+	print("File {:}".format(data_fname))
+	
+	current_step = start
+	buf = file_in.read(size_i) # Read starting integer of first data block
+
+	while(buf):
+		blocksize = int(struct.unpack('i', buf)[0])
+		print("Block {:d}".format(current_step))
+		datablock = file_in.read(blocksize)
+		trailing_integer = int(struct.unpack('i', file_in.read(size_i))[0])
+		
+		file_out.write(struct.pack('i', blocksize))
+		file_out.write(datablock)
+		file_out.write(struct.pack('i', blocksize))
+
+
+		if trailing_integer != blocksize:
+			sys.exit("block not correctly enclosed")
+
+		current_step += 1
+		if stop >= start and current_step == stop:
+			break
+		
+		buf = file_in.read(size_i)
+		if buf:
+			blocksize = int(struct.unpack('i', buf)[0])
+			if current_step % MaxStepsPerFile == 0:
+				file_out.close()
+				current_file_num += 1
+				data_fname = "{:}_file_{:03d}.dat".format(file_name_base, current_file_num)
+				file_out = open(data_fname, 'wb')
+				print("--------------------------------------------------")
+				print("File {:}".format(current_file_num, data_fname))
+
+	
+	file_out.close()
+	file_in.close()
+				   
+
+	
+	
 	
 ####################################################################################################
 def ConvertTracerOutput(file_name, out_version=201901):
