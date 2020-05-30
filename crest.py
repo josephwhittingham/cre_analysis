@@ -20,7 +20,11 @@ class CrestParameters:
 
 		# General Settings for I/O
 		self.OutputDir                   = ''
-		self.InputDataFile               = ''  
+		self.InputDataFile               = ''
+		self.InputDataFileBase           = ''
+		self.InputFileFirstNum			 = 0
+		self.InputFileLastNum			 = 0
+		self.MaxStepsReadIn				 = 0
 		self.SnapshotFileBase            = ''
 
 		# Settings for Discretization
