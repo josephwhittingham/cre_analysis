@@ -516,12 +516,13 @@ class ArepoTracerOutput:
 		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
 		      Possible variables names are:
 		       - standard: ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
-		       - shock acceleration: ['B', 'ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
-									  'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir']
+		       - shock acceleration: ['B', 'ShockFlag', 'eps_CRp_acc',
+		                              'n_gasPreShock', 'n_gasPostShock',
+		                              'VShock', 'timeShockCross', 'ShockDir']
 		       - magnetic obliquity: ['theta']
 		       - SN injection: ['eps_CRp_inj']
 		      Please note that some variable blocks are only available if the code was compiled
-              and run with these configurations.
+		      and run with these configurations.
 
 		    splitted_files (bool): Separate header and data files (default, version >= 2020-01).
 		       Chose 'False' if file of version <= 2019-03. Default: True
@@ -967,7 +968,7 @@ class ArepoTracerOutput:
 						if type(specific_particles) is int:
 							pos = specific_particles
 							# read single data
-							for n in np.arange(self.nSnap):
+							for n in np.arange(snapRead, self.nSnap):
 								# loop over all possible variables
 								for i in np.arange(len(self._var_name)):
 
@@ -1086,7 +1087,7 @@ class ArepoTracerOutput:
 								else:
 									break
 
-						snapRead += n
+					snapRead += n + 1
 					
 				else:
 					print("No data block was found. If first_snap larger than number of Snapshots in first file, chose smaller first_snap and larger first file number.")
