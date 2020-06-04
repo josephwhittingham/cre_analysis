@@ -473,6 +473,9 @@ class ArepoTracerOutput:
 	All variables will be stored as (nPart, nSnap) arrays unless only one specific particle
 	is read in then the arrays have the shape (nSnap, ).
 
+	Alternatively, a new empty tracer instance can be created, variables can be assigned, and
+	data can be stored in file.
+
 	Example:
 	   Load a tracer output with path and name to file by, e.g.,
 
@@ -486,6 +489,11 @@ class ArepoTracerOutput:
 
 	      $ data[1, 2] # particle 1 and snapshot 2
 	      $ data[:, 1] # all particles and snapshot 1
+
+	   Create new empty tracer data for 10 snapshots and 20 particles
+
+	     $ data2 = ArepoTracerOutput()
+	     $ data2.
 
 	"""
 
@@ -561,6 +569,10 @@ class ArepoTracerOutput:
 		""" List of names of the variables which are in the file. Variables are stored if corresponding value of var_store is True. """
 		return self._version
 
+	def set_version(self, version):
+		""" Manually set the version number"""
+		self._version = version
+
 	@property
 	def var_dtype(self):
 		""" List of data types of the variables """
@@ -576,6 +588,199 @@ class ArepoTracerOutput:
 		""" List of cgs conversion factors """
 		return self._var_cgs_factors
 
+	def define_variables(self, new=False):
+		""" Define names, types, and unit conversion factor 
+		
+		Args:
+		
+		new (bool) : Flag whether we create new tracer data instead of reading from a file
+		    default False.
+
+        """
+		
+		size_i, size_I, size_f, size_d = check_encoding()
+
+		def variable_size(type_arr): 
+			def typesize(type_str): 
+				if type_str == np.int32: 
+					return size_i 
+				elif type_str == np.uint32: 
+					return size_I 
+				elif type_str == np.float32: 
+					return size_f 
+				elif type_str == np.float64: 
+					return size_d 
+				elif type_str == np.ndarray:
+					return 3*size_f
+				else: 
+					sys.exit("error") 
+			return np.sum(np.array([typesize(type_str) for type_str in type_arr])) 
+
+		L = self.UnitLength_in_cm
+		M = self.UnitMass_in_g
+		V = self.UnitVelocity_in_cm_per_s
+
+		# cgs scaling of variables
+		B = np.sqrt(M * V**2 / L**3) # B scaling
+		N = M / (PROTONMASS * L**3) # Gas Density Scaling without mean molecular weight!
+		E = M * V**2 / L**3 # Energy Density Scaling
+
+
+		# names of all possible variables
+		# for better readability: new line after 5 elements
+		# the order of the variables has to be same as in the file
+
+
+		if self._version == 201901:
+			self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'pos',\
+							  'n_gas', 'u_therm', 'B', 'eps_photon', 'ShockFlag',\
+							  'eps_CRp_acc', 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross',\
+							  'theta', 'CReInjection', 'injRate', 'alphaInj', 'pInj']\
+
+
+			# types of the variable
+			# we assume the types 'np.array' to be of lenght 3 and dtype np.float32
+			self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.ndarray,\
+							   np.float32, np.float32, np.float32, np.float32, np.int32,\
+							   np.float32, np.float32, np.float32, np.float32, np.float32,\
+							   np.float32, np.int32,   np.float32, np.float32, np.float32]
+
+
+			if not new and variable_size(self._var_dtype) != self._traceroutput_tracersize:
+				sys.exit("Size of tracer data block given in file is not the same as in code!")
+			else:
+				self._traceroutput_tracersize = variable_size(self._var_dtype)
+
+			# cgs scaling of the variable
+			self._var_cgs_factor = [1, L/V, 1, M, L,\
+									N, V**2, B, E, 1,\
+									E, N, N, V, L/V,\
+									1, 1, V/L, 1, 1]
+
+
+		elif self._version == 201902:
+			self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'pos',\
+							  'n_gas', 'u_therm', 'B', 'eps_photon', 'ShockFlag',\
+							  'eps_CRp_acc', 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross',\
+							  'ShockDir',  'theta', 'CReInjection', 'injRate', 'alphaInj',\
+							  'pInj']
+
+			# types of the variable
+			self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.ndarray,\
+							   np.float32, np.float32, np.ndarray, np.float32, np.int32,\
+							   np.float32, np.float32, np.float32, np.float32, np.float32,\
+							   np.ndarray, np.float32, np.int32,   np.float32, np.float32,\
+							   np.float32]
+
+
+			if not new and variable_size(self._var_dtype) != self._traceroutput_tracersize:
+				sys.exit("Size of tracer data block given in file is not the same as in code!")
+			else:
+				self._traceroutput_tracersize = variable_size(self._var_dtype)
+
+			# cgs scaling of the variable
+			self._var_cgs_factor = [1, L/V, 1, M, L,\
+									N, V**2, B, E, 1,\
+									E, N, N, V, L/V,\
+									1, 1, 1, V/L, 1,\
+									1]
+
+		elif self._version >= 201903:
+			self._var_name = ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
+			self._var_dtype = [np.float64, np.ndarray, np.float32, np.float32, np.float32]
+			self._var_cgs_factor = [L/V, L, N, V**2, E]
+
+			if self.flag_cosmic_ray_shock_acceleration:
+				self._var_name.append(['B', 'ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
+										   'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir'])
+
+				self._var_dtype.append([np.ndarray, np.int32, np.float32, np.float32,
+										   np.float32, np.float32, np.float32, np.ndarray])
+
+				self._var_cgs_factor.append([B, 1, E, N,
+												 N, V, L/V,	1])
+
+				if self.flag_cosmic_ray_magnetic_obliquity:
+					  self._var_name.append('theta')
+					  self._var_dtype.append(np.float32)
+					  self._var_cgs_factor.append(1)
+
+
+			else:
+				self._var_name.append('B')
+				self._var_dtype.append(np.float32)
+				self._var_cgs_factor.append(B)
+
+
+			if self.flag_cosmic_ray_sn_injection:
+				self._var_name.append('eps_CRp_inj')
+				self._var_dtype.append(np.float32)
+				self._var_cgs_factor.append(E)
+
+			self._var_name = list(flatten(self._var_name))
+			self._var_dtype = list(flatten(self._var_dtype))
+			self._var_cgs_factor = list(flatten(self._var_cgs_factor))
+
+		else:
+			sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
+
+		if new:
+			self._traceroutput_tracersize = (variable_size(self._var_dtype) - size_d) * self.nPart + size_d
+
+
+	def initialize_variables(self, specific_fields=None, specific_particles=None):
+		""" Initialize are variable arrays. 
+
+		The function define_variables() has to be called before!
+		
+		Args:
+		   specific_fields (list of strings): Variable names if only specific fields should be stored
+
+		   specific_particles (int or list of ints): Particles to be read/stored
+
+		"""
+		
+
+		# will the variable be stored or not
+		self._var_store = np.ones(len(self._var_name), dtype=bool) # array filled with True
+
+		if specific_fields is not None:
+			# make no storage default, invert var_store array
+			np.logical_not(self._var_store, out=self._var_store)
+
+			if type(specific_fields) is str:
+				specific_fields = [specific_fields]
+
+			for sf in specific_fields:
+				if sf in self._var_name:
+					self._var_store[ self._var_name.index(sf) ] = True
+				else:
+					sys.exit("Variable '{:}' does not exist in tracer output!".format(sf))
+
+
+		if type(specific_particles) is not int:
+			for i in np.arange(len(self._var_name)):
+				# Create nPart x nSnap size arrays for all variables if var_store element is true
+				if self._var_store[i]:
+					if self._var_name[i] == 'time' and self._version >= 201903:
+						setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
+					elif self._var_dtype[i] is not np.ndarray: # scalar variable
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart), dtype=self._var_dtype[i]))
+					else: # 3D Vector
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart, 3), dtype=np.float32))
+
+		else:
+			for i in np.arange(len(self._var_name)):
+				# Create nPart x nSnap size arrays for all variables if var_store element is true
+				if self._var_store[i]:
+					if self._var_name[i] == 'time' and self._version >= 201903:
+						setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
+					elif self._var_dtype[i] is not np.ndarray: # scalar
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
+					else: # 3D Vector
+						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
+		
+
 	def read_header(self, file_base, verbose = False, splitted_files=True):
 		""" Read in the header data from file. This function is automatically called if class constructor is called with the file name"""
 
@@ -590,7 +795,7 @@ class ArepoTracerOutput:
 				print("Read Arepo's tracer output from file '{}'".format(file_name))
 			size_i, size_I, size_f, size_d = check_encoding()
 
-			def blocksize(type_arr): 
+			def variable_size(type_arr): 
 				def typesize(type_str): 
 					if type_str == np.int32: 
 						return size_i 
@@ -664,108 +869,7 @@ class ArepoTracerOutput:
 			if end_integer != self._traceroutput_headersize:
 				sys.exit("Header block not correctly enclosed")
 
-			L = self.UnitLength_in_cm
-			M = self.UnitMass_in_g
-			V = self.UnitVelocity_in_cm_per_s
-
-			# cgs scaling of variables
-			B = np.sqrt(M * V**2 / L**3) # B scaling
-			N = M / (PROTONMASS * L**3) # Gas Density Scaling without mean molecular weight!
-			E = M * V**2 / L**3 # Energy Density Scaling
-
-
-			# names of all possible variables
-			# for better readability: new line after 5 elements
-			# the order of the variables has to be same as in the file
-
-
-			if self._version == 201901:
-				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'pos',\
-								  'n_gas', 'u_therm', 'B', 'eps_photon', 'ShockFlag',\
-								  'eps_CRp_acc', 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross',\
-								  'theta', 'CReInjection', 'injRate', 'alphaInj', 'pInj']\
-							 
-
-				# types of the variable
-				# we assume the types 'np.array' to be of lenght 3 and dtype np.float32
-				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.ndarray,\
-								   np.float32, np.float32, np.float32, np.float32, np.int32,\
-								   np.float32, np.float32, np.float32, np.float32, np.float32,\
-								   np.float32, np.int32,   np.float32, np.float32, np.float32]
-								   
-
-				if blocksize(self._var_dtype) != self._traceroutput_tracersize:
-					sys.exit("Size of tracer data block given in file is not the same as in code!")
-
-				# cgs scaling of the variable
-				self._var_cgs_factor = [1, L/V, 1, M, L,\
-										N, V**2, B, E, 1,\
-										E, N, N, V, L/V,\
-										1, 1, V/L, 1, 1]
-										
-
-			elif self._version == 201902:
-				self._var_name = ['ID', 'time', 'ParentCellID', 'TracerMass', 'pos',\
-								  'n_gas', 'u_therm', 'B', 'eps_photon', 'ShockFlag',\
-								  'eps_CRp_acc', 'n_gasPreShock', 'n_gasPostShock', 'VShock', 'timeShockCross',\
-								  'ShockDir',  'theta', 'CReInjection', 'injRate', 'alphaInj',\
-								  'pInj']
-
-				# types of the variable
-				self._var_dtype = [np.uint32,  np.float64, np.uint32,  np.float32, np.ndarray,\
-								   np.float32, np.float32, np.ndarray, np.float32, np.int32,\
-								   np.float32, np.float32, np.float32, np.float32, np.float32,\
-								   np.ndarray, np.float32, np.int32,   np.float32, np.float32,\
-								   np.float32]
-
-				if blocksize(self._var_dtype) != self._traceroutput_tracersize:
-					sys.exit("Size of tracer data block given in file is not the same as in code!")
-
-				# cgs scaling of the variable
-				self._var_cgs_factor = [1, L/V, 1, M, L,\
-										N, V**2, B, E, 1,\
-										E, N, N, V, L/V,\
-										1, 1, 1, V/L, 1,\
-										1]
-
-			elif self._version >= 201903:
-				self._var_name = ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
-				self._var_dtype = [np.float64, np.ndarray, np.float32, np.float32, np.float32]
-				self._var_cgs_factor = [L/V, L, N, V**2, E]
-
-				if self.flag_cosmic_ray_shock_acceleration:
-					self._var_name.append(['B', 'ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
-											   'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir'])
-
-					self._var_dtype.append([np.ndarray, np.int32, np.float32, np.float32,
-											   np.float32, np.float32, np.float32, np.ndarray])
-
-					self._var_cgs_factor.append([B, 1, E, N,
-													 N, V, L/V,	1])
-
-					if self.flag_cosmic_ray_magnetic_obliquity:
-						  self._var_name.append('theta')
-						  self._var_dtype.append(np.float32)
-						  self._var_cgs_factor.append(1)
-
-
-				else:
-					self._var_name.append('B')
-					self._var_dtype.append(np.float32)
-					self._var_cgs_factor.append(B)
-
-
-				if self.flag_cosmic_ray_sn_injection:
-					self._var_name.append('eps_CRp_inj')
-					self._var_dtype.append(np.float32)
-					self._var_cgs_factor.append(E)
-
-				self._var_name = list(flatten(self._var_name))
-				self._var_dtype = list(flatten(self._var_dtype))
-				self._var_cgs_factor = list(flatten(self._var_cgs_factor))				
-
-			else:
-				sys.exit("Version '{:d}-{:02d}' not supported or implemented!".format(self._version // 100, self._version % 100))
+			self.define_variables()
 
 			f.close()
 			if verbose:
@@ -849,43 +953,7 @@ class ArepoTracerOutput:
 			sys.exit("Arrays of variable names and types need to have the same length. Check read_header function")
 
 
-		# will the variable be stored or not
-		self._var_store = np.ones(len(self._var_name), dtype=bool) # array filled with True
-
-
-		if specific_fields is not None:
-			# make no storage default, invert var_store array
-			np.logical_not(self._var_store, out=self._var_store)
-
-			for sf in specific_fields:
-				if sf in self._var_name:
-					self._var_store[ self._var_name.index(sf) ] = True
-				else:
-					sys.exit("Variable '{:}' does not exist in tracer output!".format(sf))
-
-
-		if type(specific_particles) is not int:
-			for i in np.arange(len(self._var_name)):
-				# Create nPart x nSnap size arrays for all variables if var_store element is true
-				if self._var_store[i]:
-					if self._var_name[i] == 'time' and self._version >= 201903:
-						setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
-					elif self._var_dtype[i] is not np.ndarray: # scalar variable
-						setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart), dtype=self._var_dtype[i]))
-					else: # 3D Vector
-						setattr(self, self._var_name[i], np.ndarray((self.nSnap, self.nPart, 3), dtype=np.float32))
-
-		else:
-			for i in np.arange(len(self._var_name)):
-				# Create nPart x nSnap size arrays for all variables if var_store element is true
-				if self._var_store[i]:
-					if self._var_name[i] == 'time' and self._version >= 201903:
-						setattr(self, self._var_name[i], np.ndarray(self.nSnap, dtype=self._var_dtype[i]))
-					elif self._var_dtype[i] is not np.ndarray: # scalar
-						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
-					else: # 3D Vector
-						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
-
+		self.initialize_variables(specific_fields=specific_fields, specific_particles=specific_particles)
 
 		snapRead = 0 # number of already read in snapshots
 		for file_name, file_num in zip(file_names, np.arange(len(file_names))):
@@ -1128,6 +1196,56 @@ class ArepoTracerOutput:
 			print("Variables are already stored in code units")
 
 
+	def create_new_data(self, nSnap, nPart, version=202001, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
+						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
+						flag_cosmic_ray_sn_injection = False):
+		""" Create new empty tracer data
+
+		Args:
+           nSnap (int) : Number of snapshots
+
+		   nPart (int) : Number of tracer particles
+
+		   UnitLength_in_cm (float) : default 1
+
+		   UnitMass_in_g (float) : default 1
+
+		   UnitVelocity_in_cm_per_s (float) : default 1
+
+		   flag_cosmic_ray_sn_injection (bool) : default False
+
+		   flag_cosmic_ray_magnetic_obliquity (bool) : default False
+
+		   flag_cosmic_ray_sn_injection (bool) : default False
+
+		"""
+
+		size_i, size_I, size_f, size_d = check_encoding()
+
+		self._version = version
+		self.nSnap = nSnap
+		self.nPart = nPart
+
+		self.flag_cosmic_ray_shock_acceleration = flag_cosmic_ray_shock_acceleration
+		self.flag_cosmic_ray_magnetic_obliquity = flag_cosmic_ray_magnetic_obliquity
+		self.flag_cosmic_ray_sn_injection = flag_cosmic_ray_sn_injection
+
+		self.UnitLenght_in_cm = 1.
+		self.UnitMass_in_g = 1.
+		self.UnitVelocity_in_cm_per_s = 1.
+
+		self.define_variables(new=True)
+		self.initialize_variables()
+
+		self.TracerMass = np.ndarray(self.nPart, dtype=np.float32)
+		self.ID = np.ndarray(self.nPart, dtype=np.uint32)
+		if self._version >= 201903:
+			self._traceroutput_headersize = 6 * size_i + 3 * size_d + self.nPart * (size_f + size_I)
+
+
+		else:
+			sys.exit("Version {:}-{:02d} not implemented yet for writing")
+
 				
 
 	def __getitem__(self, key):
@@ -1192,61 +1310,82 @@ class ArepoTracerOutput:
 	def save(self, file_name):
 		"""
 		Write a new output file with the subset of currently stored particles.
+
+		Args:
+
+		   file_name (str) : Base for file name (version >= 2020-01) or full file name (version <= 2019-03)
+
 		"""
 		if not self._var_store.all():
-			print("Warning: No output was created! Not every possible field is stored, therefore an output is unreadable by CREST.")
+			print("Warning: No output was created! Not every possible field is defined, therefore an output is unreadable by CREST.")
 			return None
-			
-		if isfile(file_name):
-			print("Warning: File existed and will be overwritten")
-			f_op = 'wb'
-		else:
-			f_op = 'rb'
 
-		with open(file_name, f_op) as f:
-			# Store header block
-			f.write(struct.pack('i', self._traceroutput_headersize))
-			f.write(struct.pack('i', self._version))
-			f.write(struct.pack('d', self.UnitLength_in_cm))
-			f.write(struct.pack('d', self.UnitMass_in_g))
-			f.write(struct.pack('d', self.UnitVelocity_in_cm_per_s))
-			if self._version <= 201902:
+		if self._version >= 202001:
+			file_name_header = "{:}_header.dat".format(file_name)
+			file_name_data = "{:}_file_000.dat".format(file_name)
+
+			print("I create the files '{:}' and '{:}'".format(file_name_header, file_name_data))
+
+			if isfile(file_name_header):
+				print("Warning: File '{:}' existed and will be overwritten".format(file_name_header))
+				f_op = 'wb'
+			else:
+				f_op = 'xb'
+
+			with open(file_name_header, f_op) as f:
+				# Store header block
+				f.write(struct.pack('i', self._traceroutput_headersize))
+				f.write(struct.pack('i', self._version))
+				f.write(struct.pack('d', self.UnitLength_in_cm))
+				f.write(struct.pack('d', self.UnitMass_in_g))
+				f.write(struct.pack('d', self.UnitVelocity_in_cm_per_s))
 				f.write(struct.pack('i', self.nPart))
-				f.write(struct.pack('i', self._traceroutput_tracersize))
-				blocksize = self.nPart * self._traceroutput_tracersize
-
-			else: # version >= 201903
 				f.write(struct.pack('i', int(self.flag_cosmic_ray_shock_acceleration)))
 				f.write(struct.pack('i', int(self.flag_cosmic_ray_magnetic_obliquity)))
 				f.write(struct.pack('i', int(self.flag_cosmic_ray_sn_injection)))
-				f.write(struct.pack('{:d}f', self.TracerMass[:]))
-				f.write(struct.pack('{:d}I', self.ID[:]))
-				blocksize = self._traceroutput_tracersize
+				f.write(struct.pack('{:d}f'.format(self.nPart), *self.TracerMass.astype(np.float)[:]))
+				f.write(struct.pack('{:d}I'.format(self.nPart), *self.ID.astype(np.uint32)[:]))
+				f.write(struct.pack('i', self._traceroutput_tracersize))
+				f.write(struct.pack('i', self._traceroutput_headersize))
 
-			f.write(struct.pack('i', self._traceroutput_headersize))
+				f.close()
 
-			for n in np.arange(self.nSnap):
-				f.write(struct.pack('i', blocksize))
-				for i in np.arange(len(self._var_name)):
-					if self._var_name == 'time' and self._version >= 201903:
-						f.write(struct.pack('d', self.time[n])) 					
-					elif self._var_dtype[i] == np.uint32:
-						f.write(struct.pack('{:d}I'.format(self.nPart), *getattr(self, self._var_name[i])[n, :])) # equivalent to e.g. struct.pack(... , self.ID[n, :] )
-					elif self._var_dtype[i] == np.int32:
-						f.write(struct.pack('{:d}i'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
-					elif self._var_dtype[i] == np.float32:
-						f.write(struct.pack('{:d}f'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
-					elif self._var_dtype[i] == np.float64:
-						f.write(struct.pack('{:d}d'.format(self.nPart), *getattr(self, self._var_name[i])[n, :]))
-					elif self._var_dtype[i] == np.ndarray:
-						for j in np.arange(3):
-							f.write(struct.pack('{:d}f'.format(self.nPart), *getattr(self, self._var_name[i])[n, :, j]))
-					else:
-						sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
+			if isfile(file_name_data):
+				print("Warning: File '{:}' existed and will be overwritten".format(file_name_data))
+				f_op = 'wb'
+			else:
+				f_op = 'xb'
 
-				f.write(struct.pack('i', blocksize))
+			with open(file_name_data, f_op) as f:
+				for n in np.arange(self.nSnap):
+					f.write(struct.pack('i', self._traceroutput_tracersize))
+					for i in np.arange(len(self._var_name)):
+						if self._var_name[i] == 'time' and self._version >= 201903:
+							f.write(struct.pack('d', self.time[n].astype(self._var_dtype[i]))) 					
+						elif self._var_dtype[i] == np.uint32:
+							f.write(struct.pack('{:d}I'.format(self.nPart), *getattr(self, self._var_name[i])[n, :].astype(self._var_dtype[i]))) # equivalent to e.g. struct.pack(... , self.ID[n, :] )
+						elif self._var_dtype[i] == np.int32:
+							f.write(struct.pack('{:d}i'.format(self.nPart), *getattr(self, self._var_name[i])[n, :].astype(self._var_dtype[i])))
+						elif self._var_dtype[i] == np.float32:
+							f.write(struct.pack('{:d}f'.format(self.nPart), *getattr(self, self._var_name[i])[n, :].astype(self._var_dtype[i])))
+						elif self._var_dtype[i] == np.float64:
+							f.write(struct.pack('{:d}d'.format(self.nPart), *getattr(self, self._var_name[i])[n, :].astype(self._var_dtype[i])))
+						elif self._var_dtype[i] == np.ndarray:
+							for j in np.arange(3):
+								f.write(struct.pack('{:d}f'.format(self.nPart), *getattr(self, self._var_name[i])[n, :, j].astype(np.float32)))
+						else:
+							sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
-			print("Succesfully stored Arepo tracer outputfile in '{:}'".format(file_name))
+					f.write(struct.pack('i', self._traceroutput_tracersize))
+
+				f.close()
+
+			print("Files were written successfully.")
+			
+
+		else:
+			sys.exit("Version {:d}-{:02d} not yet implemented".format(self._version // 100, self._version % 100))
+						
 				
 
 def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start=0, stop=-1):
