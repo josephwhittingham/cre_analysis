@@ -405,8 +405,11 @@ class CrestSnapshot:
 
 				# Spectrum Data
 				blocksize = int(struct.unpack('I', f.read(size_i))[0])
-				if self.version == 201903:
-					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
+				if self.version >= 201903:
+					if self.flag_shock_acceleration:
+						datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
+					else:
+						datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 8 * size_d)
 				elif self.version == 201902:
 					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 10 * size_d)
 				elif self.version == 201901:
@@ -428,7 +431,7 @@ class CrestSnapshot:
 				self.eps_photon = np.ndarray(self.nPart, dtype=float)
 				self.pos = np.ndarray((self.nPart, 3), dtype=float)				
 
-				if self.version>=201902:
+				if self.version>=201902 and self.flag_shock_acceleration:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
 				else:
 					self.B = np.ndarray(self.nPart, dtype=float)
@@ -443,7 +446,7 @@ class CrestSnapshot:
 				self.u_therm[:]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.eps_photon[:]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				
-				if self.version>=201902:
+				if self.version>=201902 and self.flag_shock_acceleration:
 					for j in np.arange(3):
 						self.B[:, j]   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				else:
