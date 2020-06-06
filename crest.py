@@ -1391,8 +1391,8 @@ class ArepoTracerOutput:
 						
 				
 
-def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start=0, stop=-1):
-	file_in = open(file_name_in,'rb')
+def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start=0, stop=-1, truncate_from_start=False):
+	file_in = open(file_name_in,'rb+')
 	header_fname = "{:}_header.dat".format(file_name_base)
 	
 	file_out = open(header_fname, 'wb')
@@ -1421,50 +1421,75 @@ def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start
 	### jump over sum blocks
 	if start > 0:
 		blocksize = int(struct.unpack('i', file_in.read(size_i))[0])
-		file_in.seek(start*(blocksize + 2*size_i) - size_i, 1)
+		file_in.seek(- size_i, 1)
+		jumps = start // MaxStepsPerFile
+		for i in np.arange(jumps):
+			print("Jumping over block {:d}".format(i*MaxStepsPerFile))
+			file_in.seek(MaxStepsPerFile*(blocksize + 2*size_i), 1)
 
 	current_file_num = start // MaxStepsPerFile
-	data_fname = "{:}_file_{:03d}.dat".format(file_name_base, current_file_num)
-	file_out = open(data_fname, 'wb')
-	print("Starting data block transfer")
-	print("--------------------------------------------------")
-	print("File {:}".format(data_fname))
-	
 	current_step = start
 	buf = file_in.read(size_i) # Read starting integer of first data block
+	if buf:
+		data_fname = "{:}_file_{:03d}.dat".format(file_name_base, current_file_num)
+		file_out = open(data_fname, 'wb')
 
-	while(buf):
-		blocksize = int(struct.unpack('i', buf)[0])
-		print("Block {:d}".format(current_step))
-		datablock = file_in.read(blocksize)
-		trailing_integer = int(struct.unpack('i', file_in.read(size_i))[0])
-		
-		file_out.write(struct.pack('i', blocksize))
-		file_out.write(datablock)
-		file_out.write(struct.pack('i', blocksize))
+		print("Starting data block transfer")
+		print("--------------------------------------------------")
+		print("File {:}".format(data_fname))
 
 
-		if trailing_integer != blocksize:
-			sys.exit("block not correctly enclosed")
-
-		current_step += 1
-		if stop >= start and current_step == stop:
-			break
-		
-		buf = file_in.read(size_i)
-		if buf:
+		while(buf):
 			blocksize = int(struct.unpack('i', buf)[0])
-			if current_step % MaxStepsPerFile == 0:
-				file_out.close()
-				current_file_num += 1
-				data_fname = "{:}_file_{:03d}.dat".format(file_name_base, current_file_num)
-				file_out = open(data_fname, 'wb')
-				print("--------------------------------------------------")
-				print("File {:}".format(current_file_num, data_fname))
+			print("Block {:d}".format(current_step))
+			datablock = file_in.read(blocksize)
+			trailing_integer = int(struct.unpack('i', file_in.read(size_i))[0])
 
-	
-	file_out.close()
+			file_out.write(struct.pack('i', blocksize))
+			file_out.write(datablock)
+			file_out.write(struct.pack('i', blocksize))
+
+			del datablock
+
+
+			if trailing_integer != blocksize:
+				sys.exit("block not correctly enclosed")
+
+			current_step += 1
+			if stop >= start and current_step == stop:
+				break
+
+			buf = file_in.read(size_i)
+			if buf:
+				blocksize = int(struct.unpack('i', buf)[0])
+				if current_step % MaxStepsPerFile == 0:
+					file_out.close()
+					current_file_num += 1
+					data_fname = "{:}_file_{:03d}.dat".format(file_name_base, current_file_num)
+					file_out = open(data_fname, 'wb')
+					print("--------------------------------------------------")
+					print("File {:}".format(current_file_num, data_fname))
+
+		if truncate_from_start and start > 0:
+			file_in.seek(traceroutput_headersize + 2*size_i, 0)
+			jumps = start // MaxStepsPerFile
+			for i in np.arange(jumps):
+				print("Jumping over block {:d}".format(i*MaxStepsPerFile))
+				file_in.seek(MaxStepsPerFile*(blocksize + 2*size_i), 1)
+
+			print("Truncate to size: {:}".format(file_in.truncate()))
+
+
+		file_out.close()
+
+	else:
+		data_fname = None
+		print("Nothing to transfer")
+
 	file_in.close()
+	
+
+
 				   
 
 	
