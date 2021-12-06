@@ -52,7 +52,7 @@ class CRelectronParameters:
 		self.OutputEverySnapshotOn       = 0
 		self.TimeOfFirstSnapshot         = 0.0
 		self.TimeBetSnapshot             = 0.01
-		self.CosmologicalIntegrationOn   = 0
+		self.ComovingIntegrationOn   = 0
 
 		# Flags
 		self.FlagAllowSubcycles          = 1
