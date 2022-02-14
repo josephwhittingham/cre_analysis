@@ -157,7 +157,7 @@ def SolutionSteadyStateElectrons(p, param, part, tp_id, snap):
 	fA = np.zeros(p.size)
 
 	ne = electron_density(part.n_gas[tp_id, snap], param.n_elec, param.HydrogenMassFrac)
-	if param.ComovingIntegrationOn == 0:
+	if param.CosmologicalIntegrationOn == 0:
 		z = 0.
 	else:
 		z = np.power(part.time[tp_id, snap], -1) - 1.
