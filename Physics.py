@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.integrate import simps, quad
+import IPython
 
 THOMPSON             = 6.65245873e-25
 ELECTRONMASS         = 9.1093829e-28
@@ -55,24 +56,23 @@ def coulomb_loss_rate(p, n_e ):
 def ic_sync_loss_rate(p, eps_photon, magnetic_field, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( (np.power(1+redshift_z,4) + (magnetic_field / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + eps_photon) 
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( (np.power(1+redshift_z,4) + (np.linalg.norm(magnetic_field, axis=0) / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + eps_photon)
 
 def ic_loss_rate(p, eps_photon, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( np.power(1+redshift_z,4) * CMB_ENERGY_DENSITY + eps_photon) 
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( np.power(1+redshift_z,4) * CMB_ENERGY_DENSITY + eps_photon)
 
 def sync_loss_rate(p, magnetic_field):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * (magnetic_field / CMB_MAGNETIC_FIELD )**2  * CMB_ENERGY_DENSITY
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * (np.linalg.norm(magnetic_field, axis=0) / CMB_MAGNETIC_FIELD )**2  * CMB_ENERGY_DENSITY
 
 
 def gamma_factor(p):
 	# calculates the relativistic gamma factor
 	return np.sqrt( np.add(1., np.square(p)))
 
-		
 
 def beta_factor(p):
 	# calculates the relativistic beta factor
@@ -87,7 +87,7 @@ def electron_density(rho, x_e, HydrogenMassFrac):
 def coulomb_loss_rate_proton(p, n_e):
 	return 4. * np.pi * ELECTRONCHARGE**4 * n_e / ( ELECTRONMASS * PROTONMASS * beta_factor(p)**2 * CLIGHT**3 ) * (
 				    np.log(4. * np.pi * ELECTRONMASS * CLIGHT**2 * beta_factor(p) * p  / (PLANCK * plasma_frequency(n_e))  ) -0* beta_factor(p)**2/2.
-				) 
+				)
 #
 
 def ionisation_loss_rate_proton(p, rho, HydrogenMassFrac):
@@ -102,7 +102,7 @@ def hadronic_loss_rate(p, rho, AlphaSpectralIndex, HydrogenMassFrac):
 		return (CLIGHT * 2. * rho / (1+ HydrogenMassFrac) * 32. * (0.96 + np.exp(4.4 - 2.4 * AlphaSpectralIndex) ) * 1.E-3 * BARN_IN_CM2  * 0.5 * (np.sqrt(1 + p**2)-1)) / beta_factor(p)
 	else:
 		return 0.0
- 
+
 def CoulombCoefficient(n_e):
 	return 4.0 * np.pi * ELECTRONCHARGE**4 * n_e / (ELECTRONMASS * PROTONMASS * CLIGHT**3) * np.log(4. * np.pi *  ELECTRONMASS * CLIGHT**2 / (PLANCK * plasma_frequency(n_e)))
 
@@ -126,7 +126,7 @@ def chi(p):
 	#    return np.array([3./4. * (np.log(2 * (np.square(pp) + 1.)) - 1./3.) for pp in p])
 	#else:
 	#    return 3./4. * (np.log(2 * (np.square(p) + 1.)) - 1./3.)
-	
+
 	if type(p) is np.ndarray:
 		return np.array([( + (12. * np.square(pp) + 16. )/(3. * np.sqrt(pp**2 + 1.)  * pp ) * np.log( np.sqrt(pp**2 + 1.)  + pp )
 				      - (8 * np.sqrt(pp**2 + 1.) + 6 * pp)/( 3. * np.sqrt(pp**2 + 1.) * pp**2) * np.square(np.log(np.sqrt(pp**2 + 1.) + pp ))
@@ -138,14 +138,14 @@ def chi(p):
 				 - 4./3.
 				 + 2. /  (np.sqrt(p**2 + 1.) * p) * F( 2. * p * (np.sqrt(p**2 + 1.) + p)))
 
-	
+
 def bremsstrahlung_loss_rate(p, n_gas):
 	return n_gas * gamma_factor(p) * ELECTRONCHARGE**4 / (ELECTRONMASS**2 * CLIGHT**3) * ALPHA_FINESTRUCTURE * chi(p)
 
 
 
 ######################################################################################
-def SolutionSteadyStateElectrons(p, param, part, tp_id, snap):
+def SolutionSteadyStateElectrons(p, param, part, tp_id, snap, cre_inj):
 	# Calculates the steady state spectrum of a tracer particle at given snapshot
 	#
 	# p       Momenta
@@ -162,11 +162,11 @@ def SolutionSteadyStateElectrons(p, param, part, tp_id, snap):
 	else:
 		z = np.power(part.time[tp_id, snap], -1) - 1.
 
-	iInj = np.where(p >= part.pInj[tp_id, snap])[0][0]
+	iInj = np.where(p >= cre_inj.pInj)[0][0]
 
-	fA[ : iInj] = np.divide(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.) * np.power(part.pInj[tp_id, snap], 1. - part.alphaInj[tp_id, snap]), np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))[ : iInj])) 
-	fA[iInj : ] = np.multiply(part.injRate[tp_id, snap] / (part.alphaInj[tp_id, snap] - 1.), np.divide( np.power(p, 1. - part.alphaInj[tp_id, snap]),  np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))))[iInj : ] )
-	
+	fA[ : iInj] = np.divide(cre_inj.injRate / (cre_inj.alphaInj - 1.) * np.power(cre_inj.pInj, 1. - cre_inj.alphaInj), np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))[ : iInj]))
+	fA[iInj : ] = np.multiply(cre_inj.injRate / (cre_inj.alphaInj - 1.), np.divide( np.power(p, 1. - cre_inj.alphaInj),  np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))))[iInj : ] )
+
 	return fA
 
 ######################################################################################
@@ -185,13 +185,13 @@ def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne,
 	fA = np.zeros(p.size)
 
 	# first calculate the parameters of the steady state spectrum
-	pCut = 0.5 * V / CLIGHT *np.sqrt( (comp - 1.) * 3. * ELECTRONCHARGE * B / (THOMPSON * comp * 
+	pCut = 0.5 * V / CLIGHT *np.sqrt( (comp - 1.) * 3. * ELECTRONCHARGE * B / (THOMPSON * comp *
 				  (CMB_ENERGY_DENSITY * ( ( 1. + comp * BRat)*np.power(1+z,4) + np.square(B / CMB_MAGNETIC_FIELD) * (1. + comp / BRat) )
-				   + eps_photon * ( 1 + + comp * BRat) ))) 
+				   + eps_photon * ( 1 + + comp * BRat) )))
 	alphaInj = (comp + 2.) / ( comp - 1.) # correct 1D slope
 
 	fA = cInj / ((alphaInj - 1.) * (coulomb_loss_rate(p, ne) + bremsstrahlung_loss_rate(p, n_gas) + ic_sync_loss_rate(p, eps_photon, B, z))) * np.power(p, - alphaInj + 1) * np.power((1. + param.ShockParamA * np.power(p/pCut, param.ShockParamB)), param.ShockParamC) * np.exp( - np.square( p / pCut))
-	
+
 	return fA
 
 
@@ -215,7 +215,7 @@ def SolutionSteadyStateProtons(p, param, ne, alpha, rho):
 			fA[i] = param.SourceNormalization * pow(p[i],(1-param.SourceSpectralIndex)) / (abs(coulomb_loss_rate_proton(p[i],ne) + ionisation_loss_rate_proton(p[i], rho, param.HydrogenMassFrac) + hadronic_loss_rate(p[i], rho, param.SourceSpectralIndex,param.HydrogenMassFrac)) * (param.SourceSpectralIndex - 1))
 		else:
 			fA[i] = param.SourceNormalization * pow(param.SourceLowCutoff,1-param.SourceSpectralIndex) / abs(coulomb_loss_rate_proton(p[i],ne) + ionisation_loss_rate_proton(p[i], rho, param.HydrogenMassFrac) + hadronic_loss_rate(p[i], rho, param.SourceSpectralIndex,param.HydrogenMassFrac) ) / (param.SourceSpectralIndex - 1)
-	
+
 	return fA
 
 ######################################################################################
@@ -266,7 +266,7 @@ def SolutionAdiabaticChanges(p, rho_0, rho_curr, param):
 			fA[i] = pow((rho_curr/rho_0),(param.AlphaSpectralIndex+2.)/3.) * param.NormalizationFactor * np.power(p[i],-param.AlphaSpectralIndex)
 		else:
 			fA[i] = 1.E-100
-	
+
 	return fA
 
 ##########
@@ -278,7 +278,7 @@ def SolutionApproxProtons(p, C, q, alpha):
 			fA[i] = C * np.power(p[i],-alpha)
 		else:
 			fA[i] = 1.E-100
-	
+
 	return fA
 
 ##########
@@ -287,7 +287,7 @@ def CutoffsAdiabaticChanges(p, rho_0, rho_curr, param):
 	pL = (max(param.MomentumLowCutoff, p[2]        )     * pow(rho_curr/rho_0,1./3.))
 	pH = (min(param.MomentumHighCutoff, p[-2]    )     * pow(rho_curr/rho_0,1./3.))
 	return pL, pH
-	
+
 #############
 # Kinetic Energy of Protons
 def kinetic_energy_proton(p):
@@ -315,32 +315,32 @@ class CharacteristicValues:
 		self.imin        = imin
 		self.imax         = imax
 
-		# Calculate the characteristic properties for electrons        
-		if self.FlagProtons == 0:        
+		# Calculate the characteristic properties for electrons
+		if self.FlagProtons == 0:
 			self.energy_ana   = self.calc_energy_electron(p,fAna)
 			self.pressure_ana = self.calc_pressure_electron(p,fAna)
-			
+
 			self.energy_sim   = self.calc_energy_electron(p,fSim)
 			self.pressure_sim = self.calc_pressure_electron(p,fSim)
-			
+
 			if fApp is not None:
 				self.energy_app   = self.calc_energy_electron(p,fApp)
 				self.pressure_app = self.calc_pressure_electron(p,fApp)
 
 
-		# Calculate the characteristic properties for protons        
-		else:        
+		# Calculate the characteristic properties for protons
+		else:
 			self.energy_ana   = self.calc_energy_proton(p,fAna)
 			self.pressure_ana = self.calc_pressure_proton(p,fAna)
-			
+
 			self.energy_sim   = self.calc_energy_proton(p,fSim)
 			self.pressure_sim = self.calc_pressure_proton(p,fSim)
-			
+
 			if fApp is not None:
 				self.energy_app   = self.calc_energy_proton(p,fApp)
 				self.pressure_app = self.calc_pressure_proton(p,fApp)
 
-		
+
 		# Calculate the number and the relative errors
 		self.number_ana = self.calc_number(p,fAna)
 		self.number_sim    = self.calc_number(p,fSim)
@@ -354,7 +354,7 @@ class CharacteristicValues:
 			self.del_pressure_sim   = None
 		else:
 			self.del_pressure_sim   = (self.pressure_sim - self.pressure_ana) / self.pressure_ana
-		
+
 		if self.number_ana == 0.0:
 			self.del_number_sim     = None
 		else:
@@ -370,9 +370,9 @@ class CharacteristicValues:
 			self.del_number_app     = None
 		else:
 			self.number_app = self.calc_number(p,fApp)
-			
+
 			self.del_energy_app     = (self.energy_app   - self.energy_ana)   / self.energy_ana
-			self.del_pressure_app   = (self.pressure_app - self.pressure_ana) / elf.pressure_ana        
+			self.del_pressure_app   = (self.pressure_app - self.pressure_ana) / elf.pressure_ana
 			self.del_number_app     = (self.number_app   - self.number_ana)   / self.number_ana
 
 
@@ -381,7 +381,7 @@ class CharacteristicValues:
 
 	def calc_energy_electron(self, p, f):
 		return simps(np.multiply(f[self.imin:self.imax], kinetic_energy_electron(p[self.imin:self.imax])) , p[self.imin:self.imax])
-	
+
 	def calc_pressure_proton(self, p, f):
 		return PROTONMASS * CLIGHT**2 / 3. * simps(np.multiply(f[self.imin:self.imax],np.multiply(p[self.imin:self.imax], beta_factor(p)[self.imin:self.imax])), p[self.imin:self.imax])
 
@@ -444,7 +444,7 @@ def direct_injection(p, ne, T, alpha, x_inj=3.5):
 	p_inj = x_inj * np.power(Eratio, -0.5)
 	C = 4*ne*np.power(Eratio,1.5)/np.sqrt(np.pi) * np.exp( -Eratio * p_inj**2 ) * np.power(p_inj, alpha + 2.)
 	return np.piecewise(p, [p<=p_inj, p>p_inj], [0., lambda p: np.multiply(C, np.power(p, -alpha))]), C
-	
+
 def MaxwellBoltzmann(p, ne, T):
 	Eratio = ELECTRONMASS * CLIGHT**2 / ( 2. * BOLTZMANN * T)
-	return np.multiply(4*ne*np.power(Eratio,1.5)/np.sqrt(np.pi),np.multiply(np.square(p), np.exp( np.multiply(-Eratio,np.square(p)))))	
+	return np.multiply(4*ne*np.power(Eratio,1.5)/np.sqrt(np.pi),np.multiply(np.square(p), np.exp( np.multiply(-Eratio,np.square(p)))))

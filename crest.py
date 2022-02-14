@@ -3,7 +3,18 @@ import struct
 import sys
 from Physics import PROTONMASS
 from os.path import isfile
-from matplotlib.cbook import flatten 
+from matplotlib.cbook import flatten
+import h5py
+import IPython
+
+####################################################################################################
+# class which handles the parameters needed for calcualting the steady state solutions
+# needed because these factors were phased out of Crest output
+class cre_inj:
+	def __init__(self):
+		self.injRate = 0
+		self.alphaInj = 0
+		self.pInj = 0
 
 ####################################################################################################
 # class which handles the parameters given via files to the C program
@@ -23,7 +34,7 @@ class CrestParameters:
 		self.InputDataFile               = ''
 		self.InputDataFileBase           = ''
 		self.InputFileFirstNum			 = 0
-		self.InputFileLastNum			 = 0
+		self.NumInputFiles				 = 0
 		self.MaxStepsReadIn				 = 0
 		self.SnapshotFileBase            = ''
 
@@ -54,7 +65,7 @@ class CrestParameters:
 		self.OutputEverySnapshotOn       = 0
 		self.TimeOfFirstSnapshot         = 0.0
 		self.TimeBetSnapshot             = 0.01
-		self.ComovingIntegrationOn   = 0
+		self.ComovingIntegrationOn   	 = 0
 
 		# Flags
 		self.FlagAllowSubcycles          = 1
@@ -92,8 +103,8 @@ class CrestParameters:
 		self.UseSemiAnalyticSolutionLow  = 1
 		self.UseSemiAnalyticSolutionHigh = 1
 		self.FlagFixedNumericsBoundaries = 1
-		self.MaximumMomentumNumerics = 0.
-		self.MinimumMomentumNumerics = 0.
+		self.MaximumMomentumNumerics 	 = 0.
+		self.MinimumMomentumNumerics 	 = 0.
 
 		if file_name is not None:
 			self.read_data(file_name, verbose)
@@ -110,7 +121,7 @@ class CrestParameters:
 				print("{:25} {:.5e}".format(var,getattr(self,var)))
 			if type(getattr(self, var)) is str:
 				print("{:25} {:}".format(var,getattr(self,var)))
-	
+
 	# read in the parameter file and set the private class variables accordingly
 	def read_data(self, file_name, verbose = False):
 		fParam = open(file_name, 'r')
@@ -118,7 +129,7 @@ class CrestParameters:
 			print("Reading parameters from file '{:}'\n".format(file_name))
 		for line in fParam:
 			lineParam = (line.strip()).lstrip()
-			
+
 			# ignore lines beginning with a '%' sign
 			if(lineParam != ''):
 				if(lineParam[0] != '%'):
@@ -160,7 +171,7 @@ class CrestParameters:
 ####################################################################################################
 def check_encoding():
 	""" Check the size of integers and floats and give back their size in bytes. """
-	
+
 	error = [0, 0, 0, 0]
 
 	# check integers
@@ -200,14 +211,14 @@ def check_encoding():
 ####################################################################################################
 class CrestSnapshot:
 	""" class for spectral snapshots of CREST """
-	
+
 	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None):
 		"""
 		Initialize an instance of CREST snapshot.
 
 		If no parameters are given an empty instance is initialized.
-		If a path to a file is provided the file will be read in 
-		
+		If a path to a file is provided the file will be read in
+
 		Args:
 		   file_name (str): Path of file to be read
 
@@ -215,9 +226,9 @@ class CrestSnapshot:
 
 		   get_only_header (bool): Read only header
 
-		   specific_fields (list): List of strings of the variable which should be stored, 
+		   specific_fields (list): List of strings of the variable which should be stored,
 		                           e.g., ['ID', 'time']. Of no list is given, all variables are read.
-		""" 
+		"""
 		self._var_name = None
 		self._var_dtype = None
 		self._var_store = None
@@ -231,7 +242,7 @@ class CrestSnapshot:
 			if(verbose):
 				print("Reading snapshot data from file '{:}'".format(file_name))
 
-			
+
 			# Header information
 			blocksize = int(struct.unpack('I', f.read(size_i))[0])
 			headersize = 3 * size_i + size_d
@@ -247,7 +258,7 @@ class CrestSnapshot:
 
 			if headersize != blocksize:
 				sys.exit("Size of header is {:d} bytes, but expexted {:d}".format(blocksize, headersize))
-			
+
 			self.time    = float(struct.unpack('d', f.read(size_d))[0])
 			self.nPart   = int(  struct.unpack('i', f.read(size_i))[0])
 			self.nBins   = int(  struct.unpack('i', f.read(size_i))[0])
@@ -267,7 +278,7 @@ class CrestSnapshot:
 				sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, momentumsize))
 			self.p = np.ndarray(self.nBins, dtype=float)
 			self.p[:] = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))[:]
-			
+
 			if  int(struct.unpack('I',f.read(size_i))[0]) != blocksize:
 				sys.exit("2nd data block not correctly enclosed")
 
@@ -301,7 +312,7 @@ class CrestSnapshot:
 				# 	# For scalars length is 1, otherwise it is the length of the array
 				# 	self._var_length = [1, 1, 1, 1,\
 				# 						1, 1, 3, 3, self.nBins]
-				
+
 				# else:
 				# 	sys.exit("Version {:d} not supported".format(self.version))
 
@@ -330,10 +341,10 @@ class CrestSnapshot:
 
 				# 	# loop over all possible variables
 				# 	for i in np.arange(len(self._var_name)):
-						
+
 				# 		# if variable should be stored, check the type and read from file in the correct format
 				# 		if self._var_store[i]:
-							
+
 				# 			# Array like variables with dimensions stored separately
 				# 			if self._var_length[i] > 1 and self._var_name[i] != 'f':
 				# 				for j in np.arange(self._var_length[i]): # iterate over dimensions
@@ -360,7 +371,7 @@ class CrestSnapshot:
 				# 					elif self._var_dtype[i] == np.float64:
 				# 						getattr(self, self._var_name[i])[k, :] = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
 				# 					else:
-				# 						sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))								
+				# 						sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
 				# 			elif self._var_length[i] == 1:
 				# 				if self._var_dtype[i] == np.uint32:
@@ -375,7 +386,7 @@ class CrestSnapshot:
 				# 					sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 				# 			else:
 				# 				sys.exit("Something is not correctly defined for variable '{:}' with type '{:}' and length '{:d}'".format(self._var_name[i], self._var_dtype, self._var_length))
-									
+
 
 				# 			if self._var_dtype[i] == np.uint32:
 				# 				getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[n, :] = struct.unpack( ... )
@@ -429,23 +440,23 @@ class CrestSnapshot:
 				self.n_gas = np.ndarray(self.nPart, dtype=float)
 				self.u_therm = np.ndarray(self.nPart, dtype=float)
 				self.eps_photon = np.ndarray(self.nPart, dtype=float)
-				self.pos = np.ndarray((self.nPart, 3), dtype=float)				
+				self.pos = np.ndarray((self.nPart, 3), dtype=float)
 
 				if self.version>=201902 and self.flag_shock_acceleration:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
 				else:
 					self.B = np.ndarray(self.nPart, dtype=float)
-				
+
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				if self.version <= 201902:
 					self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
-				
-				self.mass[:]           = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
+				#self.mass[:]           = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.n_gas[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.u_therm[:]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.eps_photon[:]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				
+
 				if self.version>=201902 and self.flag_shock_acceleration:
 					for j in np.arange(3):
 						self.B[:, j]   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
@@ -455,7 +466,6 @@ class CrestSnapshot:
 				for j in np.arange(3):
 					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
-				
 				for i in np.arange(self.nPart):
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
 
@@ -487,7 +497,7 @@ class ArepoTracerOutput:
 	   and access all x positions
 
 	      $ data.x
-	
+
 	   The data structure can be sliced or single particles/snapshots be picked by
 
 	      $ data[1, 2] # particle 1 and snapshot 2
@@ -500,21 +510,21 @@ class ArepoTracerOutput:
 
 	"""
 
-	
+
 	# instance variables
 	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
 		If no parameters are given an empty instance is initialized.
-		If a path to a file is provided the file will be read in 
-		
+		If a path to a file is provided the file will be read in
+
 		Args:
 		   file_base (str): Base file name (version >= 2020-01) or full file name (version <= 2019-03)
 
 		   file_numbers (int or list): File numbers of data files to be read (version >= 2020-01)
 		       Default: None (No data files to be read)
-		   
+
 		   cgs_units (bool): Flag if the values should be converted to cgs units immediately
 
 		   read_only_ic (bool): Read only header and 0th snapshot/initial conditions
@@ -523,7 +533,7 @@ class ArepoTracerOutput:
 
 		   last_snap (int): Last snapshot to be read in (exclusive, relative to first file number)
 
-		   specific_fields (list): List of strings of the variable which should be stored, 
+		   specific_fields (list): List of strings of the variable which should be stored,
 		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
 		      Possible variables names are:
 		       - standard: ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
@@ -537,11 +547,12 @@ class ArepoTracerOutput:
 
 		    splitted_files (bool): Separate header and data files (default, version >= 2020-01).
 		       Chose 'False' if file of version <= 2019-03. Default: True
-		
-		""" 
-		
+
+		"""
+
 		# with_cr_electrons is set to 1 if arepo was compiled with #COSMIC_RAYS_ELECTRONS
 		# need to set dummy values as these determine the types
+
 		self.nSnap = 0
 		self.nPart = 0
 		self.All_Units_in_cgs = False
@@ -555,8 +566,15 @@ class ArepoTracerOutput:
 		self._version = None # current default version
 		self._traceroutput_tracersize = None
 		self._traceroutput_headersize = None
+		self._use_hdf5 = 1			# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
 
-		if file_base is not None:
+
+		if self._use_hdf5 and file_base is not None:
+			self.read_header_hdf5(file_base, verbose=verbose)
+
+			self.read_data_hdf5(file_base, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
+
+		elif file_base is not None:
 			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
 
 			self.read_data(file_base, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic,
@@ -592,32 +610,32 @@ class ArepoTracerOutput:
 		return self._var_cgs_factors
 
 	def define_variables(self, new=False):
-		""" Define names, types, and unit conversion factor 
-		
+		""" Define names, types, and unit conversion factor
+
 		Args:
-		
+
 		new (bool) : Flag whether we create new tracer data instead of reading from a file
 		    default False.
 
         """
-		
+
 		size_i, size_I, size_f, size_d = check_encoding()
 
-		def variable_size(type_arr): 
-			def typesize(type_str): 
-				if type_str == np.int32: 
-					return size_i 
-				elif type_str == np.uint32: 
-					return size_I 
-				elif type_str == np.float32: 
-					return size_f 
-				elif type_str == np.float64: 
-					return size_d 
+		def variable_size(type_arr):
+			def typesize(type_str):
+				if type_str == np.int32:
+					return size_i
+				elif type_str == np.uint32:
+					return size_I
+				elif type_str == np.float32:
+					return size_f
+				elif type_str == np.float64:
+					return size_d
 				elif type_str == np.ndarray:
 					return 3*size_f
-				else: 
-					sys.exit("error") 
-			return np.sum(np.array([typesize(type_str) for type_str in type_arr])) 
+				else:
+					sys.exit("error")
+			return np.sum(np.array([typesize(type_str) for type_str in type_arr]))
 
 		L = self.UnitLength_in_cm
 		M = self.UnitMass_in_g
@@ -693,6 +711,13 @@ class ArepoTracerOutput:
 			self._var_dtype = [np.float64, np.ndarray, np.float32, np.float32, np.float32]
 			self._var_cgs_factor = [L/V, L, N, V**2, E]
 
+			if self.flag_comoving_integration_on:
+				self._var_name.append('dtValues')
+				self._var_dtype.append(np.float64)
+				self._var_cgs_factor.append(L/V)
+
+				self._var_cgs_factor[0] = 1		# This value is now the scale factor
+
 			if self.flag_cosmic_ray_shock_acceleration:
 				self._var_name.append(['B', 'ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
 										   'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir'])
@@ -732,17 +757,17 @@ class ArepoTracerOutput:
 
 
 	def initialize_variables(self, specific_fields=None, specific_particles=None):
-		""" Initialize are variable arrays. 
+		""" Initialize are variable arrays.
 
 		The function define_variables() has to be called before!
-		
+
 		Args:
 		   specific_fields (list of strings): Variable names if only specific fields should be stored
 
 		   specific_particles (int or list of ints): Particles to be read/stored
 
 		"""
-		
+
 
 		# will the variable be stored or not
 		self._var_store = np.ones(len(self._var_name), dtype=bool) # array filled with True
@@ -782,7 +807,111 @@ class ArepoTracerOutput:
 						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1), dtype=self._var_dtype[i]))
 					else: # 3D Vector
 						setattr(self, self._var_name[i], np.ndarray((self.nSnap, 1, 3), dtype=np.float32))
-		
+
+
+	def read_header_hdf5(self, file_base, verbose = False):
+
+		file_name = "{:}_file_000.hdf5".format(file_base)
+
+		hf = h5py.File(file_name, 'r')
+
+		self._version = hf['Header'].attrs['TracerOutputVersion']
+		self.flag_cosmic_ray_shock_acceleration = hf['Header'].attrs['CosmicRaysShockAccelerationFlag']
+		self.flag_cosmic_ray_magnetic_obliquity = hf['Header'].attrs['CosmicRaysMagneticObliquityFlag']
+		self.flag_cosmic_ray_sn_injection = hf['Header'].attrs['CosmicRaysSNInjectionFlag']
+		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
+
+		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
+
+		self.nPart = len(self.AllIDs)
+
+		self.UnitLength_in_cm = hf['Header'].attrs['UnitLength_in_cm']
+		self.UnitMass_in_g = hf['Header'].attrs['UnitMass_in_g']
+		self.UnitVelocity_in_cm_per_s = hf['Header'].attrs['UnitVelocity_in_cm_per_s']
+
+		if self.flag_comoving_integration_on:
+			self.hubble_param = hf['Header'].attrs['HubbleParam']
+
+		hf.close()
+
+		self.define_variables()
+
+		if verbose:
+			print("Header was read successfully")
+
+
+	def read_data_hdf5(self, file_base, file_numbers=None, cgs_units = False, verbose = False):
+
+		self.initialize_variables()
+
+		if file_numbers is not None:
+			if type(file_numbers) is int:
+			  file_numbers = [file_numbers]
+			  file_names = ["{:}_file_{:03d}.hdf5".format(file_base, num) for num in file_numbers]
+		else:
+			file_names = ["{:}_file_{:03d}.hdf5".format(file_base, 0)]
+
+		if verbose:
+			print("Read Arepo's tracer output from file '{}'".format(file_name))
+
+		snapRead = 0 # number of already read in snapshots
+		for file_name, file_num in zip(file_names, np.arange(len(file_names))):
+			if verbose:
+				print("Opening data file #{:d}".format(file_num))
+
+			hf = h5py.File(file_name, 'r')
+
+			self.ID = hf['TracerData/ParticleIDs'][()]
+			self.nSnap = self.ID.shape[0]
+
+			self.ID = self.ID.reshape(self.nSnap, self.nPart)
+
+			pos_x = hf['TracerData/Coordinates/X'][()].reshape(self.nSnap, self.nPart)
+			pos_y = hf['TracerData/Coordinates/Y'][()].reshape(self.nSnap, self.nPart)
+			pos_z = hf['TracerData/Coordinates/Z'][()].reshape(self.nSnap, self.nPart)
+			self.pos = np.hstack([pos_x, pos_y, pos_z]).reshape(self.nSnap, self.nPart, 3)
+			self.n_gas = hf['TracerData/Density'][()].reshape(self.nSnap, self.nPart)
+			self.u_therm = hf['TracerData/InternalEnergy'][()].reshape(self.nSnap, self.nPart)
+			self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()].reshape(self.nSnap, self.nPart)
+
+			if self.flag_cosmic_ray_shock_acceleration:
+				self.ShockFlag = hf['TracerData/ShockFlag'][()].reshape(self.nSnap, self.nPart)
+				mag_x = hf['TracerData/MagneticField/X'][()].reshape(self.nSnap, self.nPart)
+				mag_y = hf['TracerData/MagneticField/Y'][()].reshape(self.nSnap, self.nPart)
+				mag_z = hf['TracerData/MagneticField/Z'][()].reshape(self.nSnap, self.nPart)
+				self.B = np.hstack([mag_x, mag_y, mag_z]).reshape(self.nSnap, self.nPart, 3)
+				shock_x = hf['TracerData/ShockDirection/X'][()].reshape(self.nSnap, self.nPart)
+				shock_y = hf['TracerData/ShockDirection/Y'][()].reshape(self.nSnap, self.nPart)
+				shock_z = hf['TracerData/ShockDirection/Z'][()].reshape(self.nSnap, self.nPart)
+				self.ShockDir = np.hstack([shock_x, shock_y, shock_z]).reshape(self.nSnap, self.nPart, 3)
+				self.eps_CRp_acc = hf['TracerData/ShockDissipatedThermalEnergy'][()].reshape(self.nSnap, self.nPart)
+				self.n_gasPreShock = hf['TracerData/PreShockDensity'][()].reshape(self.nSnap, self.nPart)
+				self.n_gasPostShock = hf['TracerData/PostShockDensity'][()].reshape(self.nSnap, self.nPart)
+				self.VShock = hf['TracerData/ShockVelocity'][()].reshape(self.nSnap, self.nPart)
+				self.timeShockCross = hf['TracerData/ShockCrossingTime'][()].reshape(self.nSnap, self.nPart)
+
+				if self.flag_cosmic_ray_sn_injection:
+					self.theta = hf['TracerData/MagneticObliquity'][()].reshape(self.nSnap, self.nPart)
+
+			else:
+				self.B = hf['TracerData/MagneticField'][()].reshape(self.nSnap, self.nPart)
+
+			if self.flag_cosmic_ray_sn_injection:
+				self.eps_CRp_inj = hf['TracerData/InjectionEnergy'][()].reshape(self.nSnap, self.nPart)
+
+			self.time = hf['TracerData/Time'][()].reshape(self.nSnap)
+
+			if self.flag_comoving_integration_on:
+				self.dtValues = hf['TracerData/dtValues'][()].reshape(self.nSnap)
+
+			hf.close()
+
+		if verbose:
+			print("Data was read successfully")
+
+		if cgs_units:
+			self.scale_to_cgs_units(verbose)
+
 
 	def read_header(self, file_base, verbose = False, splitted_files=True):
 		""" Read in the header data from file. This function is automatically called if class constructor is called with the file name"""
@@ -791,35 +920,33 @@ class ArepoTracerOutput:
 			file_name = "{:}_header.dat".format(file_base)
 		else:
 			file_name = file_base
-		
+
 		with open(file_name,'rb') as f:
 			if verbose:
 				print("Read only initial conditions: {:}".format(read_only_ic))
 				print("Read Arepo's tracer output from file '{}'".format(file_name))
 			size_i, size_I, size_f, size_d = check_encoding()
 
-			def variable_size(type_arr): 
-				def typesize(type_str): 
-					if type_str == np.int32: 
-						return size_i 
-					elif type_str == np.uint32: 
-						return size_I 
-					elif type_str == np.float32: 
-						return size_f 
-					elif type_str == np.float64: 
-						return size_d 
+			def variable_size(type_arr):
+				def typesize(type_str):
+					if type_str == np.int32:
+						return size_i
+					elif type_str == np.uint32:
+						return size_I
+					elif type_str == np.float32:
+						return size_f
+					elif type_str == np.float64:
+						return size_d
 					elif type_str == np.ndarray:
 						return 3*size_f
-					else: 
-						sys.exit("error") 
-				return np.sum(np.array([typesize(type_str) for type_str in type_arr])) 
+					else:
+						sys.exit("error")
+				return np.sum(np.array([typesize(type_str) for type_str in type_arr]))
 
 			# Version dependend configuration
 			# we need to make sure that old simulations can be read in
 			# python tool for tracer output conversion??
-			
 
-			
 			# definitions from arepo's Config.sh file
 			# only from version 2019-03 stored in tracer particle file
 			self.flag_cosmic_ray_shock_acceleration = True
@@ -841,8 +968,7 @@ class ArepoTracerOutput:
 				self._traceroutput_tracersize = 2 * size_i + 2 * size_I + 17 * size_f + 1 * size_d
 				self.nPart = int(struct.unpack('i',f.read(size_i))[0]) // self._traceroutput_tracersize
 				f.seek( -2 * size_i, 1) # jump back to previous position after the unit block
-				
-							
+
 			elif self._traceroutput_headersize == 3 * size_d + 3 * size_i:
 				# version 2019-02
 				self._version                 = struct.unpack('i', f.read(size_i))[0]
@@ -866,7 +992,7 @@ class ArepoTracerOutput:
 				self.TracerMass[:] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))[:]
 				self.ID = np.ndarray(self.nPart, dtype=np.uint32)
 				self.ID[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))[:]
-				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]		
+				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
 
 			end_integer = int(struct.unpack('i', f.read(size_i))[0])
 			if end_integer != self._traceroutput_headersize:
@@ -887,12 +1013,12 @@ class ArepoTracerOutput:
 			if file_numbers is not None:
 				if type(file_numbers) is int:
 					file_numbers = [file_numbers]
-							
+
 				file_names = ["{:}_file_{:03d}.dat".format(file_base, num) for num in file_numbers]
 			else:
 				file_names = []
-					
-		
+
+
 		if verbose:
 			print("Read Arepo's tracer output from file '{}'".format(file_name))
 
@@ -905,18 +1031,18 @@ class ArepoTracerOutput:
 		# Reading block with data values
 		nPartInFile = self.nPart
 		self.nSnap	= 0
-	
-		for file_name in file_names:			
+
+		for file_name in file_names:
 			with open(file_name,'rb') as f:
 				if self._version <= 201903:
 					# Jump over headerblock
 					f.seek(2*size_i + self._traceroutput_headersize, 0)
-					
+
 				buf = f.read(size_i) # Read starting integer of first data block
 				if buf: #if buf > 0 or True next block will be read
 					blocksize = int(struct.unpack('i', buf)[0])
-					
-					
+
+
 					# Jump over data blocks and check if starting and trailing integer are the same
 					while(buf):
 						# move pointer forward
@@ -936,9 +1062,9 @@ class ArepoTracerOutput:
 							buf = f.read(size_i)
 				else:
 					print("No data block was found")
-					
+
 				f.close()
-	
+
 		if specific_particles is not None:
 			if type(specific_particles) is int:
 				self.nPart = 1
@@ -963,7 +1089,7 @@ class ArepoTracerOutput:
 			with open(file_name,'rb') as f:
 				if verbose:
 					print("Opening data file #{:d}".format(file_num))
-				
+
 				if self._version <= 201903:
 					# jump over header block
 					f.seek(2*size_i + self._traceroutput_headersize, 0)
@@ -971,7 +1097,7 @@ class ArepoTracerOutput:
 				if file_num == 0 and first_snap is not None:
 					# skip some lines
 					blocksize = int(struct.unpack('i', f.read(size_i))[0])
-					f.seek(first_snap * (blocksize + 2*size_i) - size_i, 1) 
+					f.seek(first_snap * (blocksize + 2*size_i) - size_i, 1)
 
 				buf = f.read(size_i) # Read starting integer of first data block
 				if buf: #if buf > 0 or True next block will be read
@@ -1029,7 +1155,7 @@ class ArepoTracerOutput:
 								if blocksize_next != blocksize:
 									sys.exit("Starting integer of block #{:d} differs from block before.".format(n+1))
 							else:
-								break								
+								break
 
 					else: # specific particles are chosen to be read in
 						if type(specific_particles) is np.ndarray or type(specific_particles) is list:
@@ -1082,7 +1208,7 @@ class ArepoTracerOutput:
 									else:
 										#if variable should not be stored, skip right number of bytes in file
 										if self._var_name[i] == 'time' and self._version >= 201903:
-											f.seek(size_d, 1) #We assume time to be of dtype=np.float64								
+											f.seek(size_d, 1) #We assume time to be of dtype=np.float64
 										elif self._var_dtype[i] == np.uint32:
 											f.seek(size_I * nPartInFile, 1)
 										elif self._var_dtype[i] == np.int32:
@@ -1126,7 +1252,7 @@ class ArepoTracerOutput:
 										elif self._var_dtype[i] == np.ndarray:
 											for j in np.arange(3):
 												getattr(self, self._var_name[i])[n, :, j] = np.array(struct.unpack('{:d}f'.format(nPartInFile), f.read(size_f * nPartInFile)), dtype=np.float32)[specific_particles]
-										else: 
+										else:
 											sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
 
 									else:
@@ -1159,7 +1285,7 @@ class ArepoTracerOutput:
 									break
 
 					snapRead += n + 1
-					
+
 				else:
 					print("No data block was found. If first_snap larger than number of Snapshots in first file, chose smaller first_snap and larger first file number.")
 
@@ -1170,12 +1296,12 @@ class ArepoTracerOutput:
 
 		if cgs_units:
 			self.scale_to_cgs_units(verbose)
-				
+
 
 	def scale_to_cgs_units(self, verbose=False):
 		if not self.All_Units_in_cgs:
 			if verbose:
-				print("Scale to cgs with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
+				print("Scale to cgs with UnitLength_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
 			for i in np.arange(len(self._var_name)):
 				if self._var_store[i]:
 					setattr(self, self._var_name[i], np.multiply(self._var_cgs_factor[i], getattr(self,self._var_name[i])).astype(self._var_dtype[i]))
@@ -1188,7 +1314,7 @@ class ArepoTracerOutput:
 	def scale_to_code_units(self, verbose=False):
 		if self.All_Units_in_cgs:
 			if verbose:
-				print("Scale to code units with UnitLenght_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
+				print("Scale to code units with UnitLength_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
 			for i in np.arange(len(self._var_name)):
 				if self._var_store[i]:
 					setattr(self, self._var_name[i], np.divide(self._var_cgs_factor[i], getattr(self,self._var_name[i])).astype(self._var_dtype[i]))
@@ -1201,7 +1327,7 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202001, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
-						flag_cosmic_ray_sn_injection = False):
+						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, hubble_param = 1):
 		""" Create new empty tracer data
 
 		Args:
@@ -1221,6 +1347,8 @@ class ArepoTracerOutput:
 
 		   flag_cosmic_ray_sn_injection (bool) : default False
 
+		   flag_comoving_integration_on (bool) : default False
+
 		"""
 
 		size_i, size_I, size_f, size_d = check_encoding()
@@ -1232,16 +1360,26 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_shock_acceleration = flag_cosmic_ray_shock_acceleration
 		self.flag_cosmic_ray_magnetic_obliquity = flag_cosmic_ray_magnetic_obliquity
 		self.flag_cosmic_ray_sn_injection = flag_cosmic_ray_sn_injection
+		self.flag_comoving_integration_on = flag_comoving_integration_on
 
-		self.UnitLenght_in_cm = 1.
-		self.UnitMass_in_g = 1.
-		self.UnitVelocity_in_cm_per_s = 1.
+		self.UnitLength_in_cm = UnitLength_in_cm
+		self.UnitMass_in_g = UnitMass_in_g
+		self.UnitVelocity_in_cm_per_s = UnitVelocity_in_cm_per_s
+
+		if self.flag_comoving_integration_on:
+			self.hubble_param = hubble_param
 
 		self.define_variables(new=True)
 		self.initialize_variables()
 
 		self.TracerMass = np.ndarray(self.nPart, dtype=np.float32)
-		self.ID = np.ndarray(self.nPart, dtype=np.uint32)
+
+		if self._use_hdf5:
+			self.AllIDs = np.ndarray(self.nPart, dtype=np.uint32)
+			self.ID = np.ndarray([self.nSnap,self.nPart], dtype=np.uint32)
+		else:
+			self.ID = np.ndarray(self.nPart, dtype=np.uint32)
+
 		if self._version >= 201903:
 			self._traceroutput_headersize = 6 * size_i + 3 * size_d + self.nPart * (size_f + size_I)
 
@@ -1249,7 +1387,7 @@ class ArepoTracerOutput:
 		else:
 			sys.exit("Version {:}-{:02d} not implemented yet for writing")
 
-				
+
 
 	def __getitem__(self, key):
 		# check dimensions of return
@@ -1262,7 +1400,7 @@ class ArepoTracerOutput:
 		ret.flag_cosmic_ray_shock_acceleration = self.flag_cosmic_ray_shock_acceleration
 		ret.flag_cosmic_ray_magnetic_obliquity = self.flag_cosmic_ray_magnetic_obliquity
 		ret.flag_cosmic_ray_sn_injection = self.flag_cosmic_ray_sn_injection
-		
+
 
 		ret._var_name = self._var_name
 		ret._var_dtype = self._var_dtype
@@ -1299,8 +1437,8 @@ class ArepoTracerOutput:
 		else:
 			raise TypeError('Tuple Index must be of length 2, not {}'.format(len(key)))
 
-		
-		for i in np.arange(len(self._var_name)):			
+
+		for i in np.arange(len(self._var_name)):
 			if self._var_store[i]:
 				if self._var_name[i] == 'time' and self._version >= 201903:
 					if len(key) == 2:
@@ -1309,7 +1447,7 @@ class ArepoTracerOutput:
 					setattr(ret, ret._var_name[i], getattr(self, self._var_name[i]).__getitem__(key))
 
 		return ret
-	
+
 	def save(self, file_name):
 		"""
 		Write a new output file with the subset of currently stored particles.
@@ -1319,11 +1457,130 @@ class ArepoTracerOutput:
 		   file_name (str) : Base for file name (version >= 2020-01) or full file name (version <= 2019-03)
 
 		"""
+
 		if not self._var_store.all():
 			print("Warning: No output was created! Not every possible field is defined, therefore an output is unreadable by CREST.")
 			return None
 
-		if self._version >= 202001:
+		if self._use_hdf5:
+
+			file_name_data = "{:}_file_000.hdf5".format(file_name)
+
+			if isfile(file_name_data):
+				print("Warning: File '{:}' already exists and will be overwritten".format(file_name_data))			# Should we ask for user input here? - will this ever need to run on a cluster?
+
+			hf = h5py.File(file_name_data, 'w')
+
+			# Store header block
+			header = hf.create_group('Header')
+			group_dat = hf.create_group('TracerData')
+			group_pos = group_dat.create_group('Coordinates')
+
+			if self.flag_cosmic_ray_shock_acceleration:
+				group_mag = group_dat.create_group('MagneticField')
+				group_shock = group_dat.create_group('ShockDirection')
+
+			# Datatypes
+			vlen_int = h5py.vlen_dtype(np.dtype(np.int32))
+			vlen_double = h5py.vlen_dtype(np.dtype(np.float64))
+
+			# Header info
+			header.attrs['TracerOutputVersion'] = self._version
+			header.attrs['CosmicRaysShockAccelerationFlag'] = int(self.flag_cosmic_ray_shock_acceleration)
+			header.attrs['CosmicRaysMagneticObliquityFlag'] = int(self.flag_cosmic_ray_magnetic_obliquity)
+			header.attrs['CosmicRaysSNInjectionFlag'] = int(self.flag_cosmic_ray_sn_injection)
+			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
+			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=np.float64)
+
+			header.attrs['UnitLength_in_cm'] = self.UnitLength_in_cm
+			header.attrs['UnitMass_in_g'] = self.UnitMass_in_g
+			header.attrs['UnitVelocity_in_cm_per_s'] = self.UnitVelocity_in_cm_per_s
+
+			if self.flag_comoving_integration_on:
+			    header.attrs['HubbleParam'] = self.hubble_param
+
+			# Tracer data
+			d1 = group_dat.create_dataset('ParticleIDs', (self.nSnap,) , dtype=vlen_int)
+
+			d2 = group_pos.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
+			d3 = group_pos.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
+			d4 = group_pos.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+
+			d5 = group_dat.create_dataset('Density', (self.nSnap,) , dtype=vlen_double)
+			d6 = group_dat.create_dataset('InternalEnergy', (self.nSnap,) , dtype=vlen_double)
+			d7 = group_dat.create_dataset('PhotonEnergyDensity', (self.nSnap,) , dtype=vlen_double)
+
+			if self.flag_cosmic_ray_shock_acceleration:
+			    d8 = group_dat.create_dataset('ShockFlag', (self.nSnap,) , dtype=vlen_int)
+
+			    d9 = group_mag.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
+			    d10 = group_mag.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
+			    d11 = group_mag.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+
+			    d12 = group_shock.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
+			    d13 = group_shock.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
+			    d14 = group_shock.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+
+			    d15 = group_dat.create_dataset('ShockDissipatedThermalEnergy', (self.nSnap,) , dtype=vlen_double)
+			    d16 = group_dat.create_dataset('PreShockDensity', (self.nSnap,) , dtype=vlen_double)
+			    d17 = group_dat.create_dataset('PostShockDensity', (self.nSnap,) , dtype=vlen_double)
+			    d18 = group_dat.create_dataset('ShockVelocity', (self.nSnap,) , dtype=vlen_double)
+			    d19 = group_dat.create_dataset('ShockCrossingTime', (self.nSnap,) , dtype=vlen_double)
+
+			    if self.flag_cosmic_ray_magnetic_obliquity:
+			        d20 = group_dat.create_dataset('MagneticObliquity', (self.nSnap,) , dtype=vlen_double)
+			else:
+			    d21 = group_dat.create_dataset('MagneticField', (self.nSnap,) , dtype=vlen_double)
+
+			if self.flag_cosmic_ray_sn_injection:
+			    d22 = group_dat.create_dataset('InjectionEnergy', (self.nSnap,) , dtype=vlen_double)
+
+			d23 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=np.float64)
+
+			if self.flag_comoving_integration_on:
+			    d24 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=np.float64)
+
+			for i in range(self.nSnap):
+				d1[i] = self.ID[i]
+				d2[i] = self.pos[i,:,0]
+				d3[i] = self.pos[i,:,1]
+				d4[i] = self.pos[i,:,2]
+				d5[i] = self.n_gas[i]
+				d6[i] = self.u_therm[i]
+				d7[i] = self.eps_photon[i]
+
+				if self.flag_cosmic_ray_shock_acceleration:
+					d8[i] = self.ShockFlag[i]
+					d9[i] = self.B[i,:,0]
+					d10[i] = self.B[i,:,1]
+					d11[i] = self.B[i,:,2]
+					d12[i] = self.ShockDir[i,:,0]
+					d13[i] = self.ShockDir[i,:,1]
+					d14[i] = self.ShockDir[i,:,2]
+					d15[i] = self.eps_CRp_acc[i]
+					d16[i] = self.n_gasPreShock[i]
+					d17[i] = self.n_gasPostShock[i]
+					d18[i] = self.VShock[i]
+					d19[i] = self.timeShockCross[i]
+					if self.flag_cosmic_ray_magnetic_obliquity:
+						d20[i] = self.theta[i]
+				else:
+					d21[i] = self.B[i]
+
+				if self.flag_cosmic_ray_sn_injection:
+					d22[i] = self.eps_CRp_inj[i]
+
+				d23[i] = self.time[i]
+
+				if self.flag_comoving_integration_on:
+					d24[i] = self.dtValues[i]
+
+			hf.close()
+
+			print("Arepo tracer output data written to '{}'".format(file_name_data))
+
+
+		elif self._version >= 202001:
 			file_name_header = "{:}_header.dat".format(file_name)
 			file_name_data = "{:}_file_000.dat".format(file_name)
 
@@ -1364,7 +1621,7 @@ class ArepoTracerOutput:
 					f.write(struct.pack('i', self._traceroutput_tracersize))
 					for i in np.arange(len(self._var_name)):
 						if self._var_name[i] == 'time' and self._version >= 201903:
-							f.write(struct.pack('d', self.time[n].astype(self._var_dtype[i]))) 					
+							f.write(struct.pack('d', self.time[n].astype(self._var_dtype[i])))
 						elif self._var_dtype[i] == np.uint32:
 							f.write(struct.pack('{:d}I'.format(self.nPart), *getattr(self, self._var_name[i])[n, :].astype(self._var_dtype[i]))) # equivalent to e.g. struct.pack(... , self.ID[n, :] )
 						elif self._var_dtype[i] == np.int32:
@@ -1384,17 +1641,17 @@ class ArepoTracerOutput:
 				f.close()
 
 			print("Files were written successfully.")
-			
+
 
 		else:
 			sys.exit("Version {:d}-{:02d} not yet implemented".format(self._version // 100, self._version % 100))
-						
-				
+
+
 
 def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start=0, stop=-1, truncate_from_start=False):
 	file_in = open(file_name_in,'rb+')
 	header_fname = "{:}_header.dat".format(file_name_base)
-	
+
 	file_out = open(header_fname, 'wb')
 	size_i, size_I, size_f, size_d = check_encoding()
 
@@ -1415,9 +1672,9 @@ def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start
 	trailing_integer = struct.unpack('i', file_in.read(size_i))[0]
 	if trailing_integer != traceroutput_headersize:
 		sys.exit("Input Header area not correctly enclosed")
-	
+
 	file_out.close()
-	
+
 	### jump over sum blocks
 	if start > 0:
 		blocksize = int(struct.unpack('i', file_in.read(size_i))[0])
@@ -1487,18 +1744,18 @@ def SplitTracerOutput(file_name_base, file_name_in, MaxStepsPerFile = 100, start
 		print("Nothing to transfer")
 
 	file_in.close()
-	
 
 
-				   
 
-	
-	
-	
+
+
+
+
+
 ####################################################################################################
 def ConvertTracerOutput(file_name, out_version=201901):
 	""" Convert pre 2019-01  legacy Arepo tracer output to version 2019-01 and 2019-02"""
-	
+
 	with open(file_name, 'rb') as file_in:
 		size_i, size_I, size_f, size_d = check_encoding()
 
@@ -1506,28 +1763,28 @@ def ConvertTracerOutput(file_name, out_version=201901):
 		traceroutput_headersize = int(struct.unpack('i',file_in.read(size_i))[0])
 		print("Converting tracer output to version '2019-01'")
 		if traceroutput_headersize == 3 * size_d:
-			
+
 			UnitLength_in_cm         = struct.unpack('d', file_in.read(size_d))[0]
 			UnitMass_in_g            = struct.unpack('d', file_in.read(size_d))[0]
 			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
 
-	
+
 			version = out_version
 			if struct.unpack('i', file_in.read(size_i))[0] != traceroutput_headersize:
 				sys.exit("Expected header block with size of 3 doubles")
 
 			# now change to new traceroutput_headersize
 			traceroutput_headersize = 3 * size_i + 3 * size_d
-			
+
 			traceroutput_tracersize = 2 * size_i + 2 * size_I + 17 * size_f + 1 * size_d
-			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d 
+			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d
 			tracersize_after_temp   = 2 * size_i              + 13 * size_f
-			blocksize = int(struct.unpack('i',file_in.read(size_i))[0]) 
-			
+			blocksize = int(struct.unpack('i',file_in.read(size_i))[0])
+
 			nPart = blocksize // (traceroutput_tracersize + 1 * size_f) # the old version contains one additional float
 			if out_version == 201902:
 				traceroutput_tracersize += 2 * size_f # 2019-02 contains 3D magnetic field
-			
+
 		elif traceroutput_headersize == 3 * size_d + 3 * size_i:
 			# first 2019-01 version with the variable temp included
 			version = struct.unpack('i', f.read(size_i))[0]
@@ -1536,7 +1793,7 @@ def ConvertTracerOutput(file_name, out_version=201901):
 			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
 			nPart                    = struct.unpack('i', f.read(size_i))[0]
 			traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
-			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d 
+			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d
 			tracersize_after_temp   = 2 * size_i              + 13 * size_f
 			if traceroutput_tracersize ==  2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d:
 				traceroutput_tracersize -= size_f
@@ -1565,8 +1822,8 @@ def ConvertTracerOutput(file_name, out_version=201901):
 		file_out.write(struct.pack('i', traceroutput_headersize))
 
 		# tracer particle blocks
-		buf = 1 #if buf > 0 or True next block will be read		   					
-		
+		buf = 1 #if buf > 0 or True next block will be read
+
 		while(buf):
 
 			file_out.write(struct.pack('i', traceroutput_tracersize * nPart)) # starting integer
@@ -1598,7 +1855,7 @@ class ArepoParameters:
 
 		self.OutputDir = ''
 		self.SnapshotFileBase = ''
-		
+
 		if ParameterFileName is not None:
 			self.read_data(ParameterFileName, verbose)
 
@@ -1614,7 +1871,7 @@ class ArepoParameters:
 				print("{:25} {:.5e}".format(var,getattr(self,var)))
 			if type(getattr(self, var)) is str:
 				print("{:25} {:}".format(var,getattr(self,var)))
-	
+
 	# read in the parameter file and set the private class variables accordingly
 	def read_data(self,ParameterFileName, verbose = False):
 		fParam = open(ParameterFileName,'r')
@@ -1622,7 +1879,7 @@ class ArepoParameters:
 			print("Reading parameters from file '{:}'\n".format(ParameterFileName))
 		for line in fParam:
 			lineParam = (line.strip()).lstrip()
-			
+
 			# ignore lines beginning with a '%' sign
 			if(lineParam != ''):
 				if(lineParam[0] != '%'):
@@ -1641,7 +1898,7 @@ class ArepoParameters:
 								elif type(getattr(self, var)) is str:
 									setattr(self,var,columnParam[1])
 									continue
-		
+
 		if self.OutputDir[-1] != '/':
 			self.OutputDir += '/'
 		if verbose:
@@ -1653,4 +1910,3 @@ class ArepoParameters:
 		lineParam = None
 		columnParam = None
 		fParam.close()
-
