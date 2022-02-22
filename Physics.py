@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.integrate import simps, quad
-import IPython
 
 THOMPSON             = 6.65245873e-25
 ELECTRONMASS         = 9.1093829e-28
@@ -56,7 +55,7 @@ def coulomb_loss_rate(p, n_e ):
 def ic_sync_loss_rate(p, eps_photon, magnetic_field, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( (np.power(1+redshift_z,4) + (np.linalg.norm(magnetic_field, axis=0) / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + eps_photon)
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * ( (np.power(1+redshift_z,4) + (np.linalg.norm(magnetic_field) / CMB_MAGNETIC_FIELD)**2)  * CMB_ENERGY_DENSITY + eps_photon)
 
 def ic_loss_rate(p, eps_photon, redshift_z):
 	cmb_energy_density     = 0.26# [eV cm^-3]
@@ -66,7 +65,7 @@ def ic_loss_rate(p, eps_photon, redshift_z):
 def sync_loss_rate(p, magnetic_field):
 	cmb_energy_density     = 0.26# [eV cm^-3]
 	magnetic_field_CMB     = 3.24E-6    # [Gauss]
-	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * (np.linalg.norm(magnetic_field, axis=0) / CMB_MAGNETIC_FIELD )**2  * CMB_ENERGY_DENSITY
+	return 4./3. * THOMPSON / (ELECTRONMASS * CLIGHT) * np.square(p) / beta_factor(p) * (np.linalg.norm(magnetic_field) / CMB_MAGNETIC_FIELD )**2  * CMB_ENERGY_DENSITY
 
 
 def gamma_factor(p):
