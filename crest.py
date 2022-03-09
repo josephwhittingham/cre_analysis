@@ -242,6 +242,7 @@ class CrestSnapshot:
 			if(verbose):
 				print("Reading snapshot data from file '{:}'".format(file_name))
 
+			self._use_hdf5 = 1
 
 			# Header information
 			blocksize = int(struct.unpack('I', f.read(size_i))[0])
@@ -417,10 +418,7 @@ class CrestSnapshot:
 				# Spectrum Data
 				blocksize = int(struct.unpack('I', f.read(size_i))[0])
 				if self.version >= 201903:
-					if self.flag_shock_acceleration:
-						datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
-					else:
-						datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 8 * size_d)
+					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
 				elif self.version == 201902:
 					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 10 * size_d)
 				elif self.version == 201901:
@@ -436,32 +434,31 @@ class CrestSnapshot:
 				if self.version <= 201902:
 					self.parent_cell_id = np.ndarray(self.nPart, dtype=np.uint32)
 
-				self.mass = np.ndarray(self.nPart, dtype=float)
+				if self._use_hdf5 != 1:
+					self.mass = np.ndarray(self.nPart, dtype=float)
+
 				self.n_gas = np.ndarray(self.nPart, dtype=float)
 				self.u_therm = np.ndarray(self.nPart, dtype=float)
 				self.eps_photon = np.ndarray(self.nPart, dtype=float)
 				self.pos = np.ndarray((self.nPart, 3), dtype=float)
 
-				if self.version>=201902 and self.flag_shock_acceleration:
+				if self.version>=201902:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
-				else:
-					self.B = np.ndarray(self.nPart, dtype=float)
-
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				if self.version <= 201902:
 					self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 
-				#self.mass[:]           = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				if self._use_hdf5 != 1:
+					self.mass[:]           = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
 				self.n_gas[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.u_therm[:]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				self.eps_photon[:]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
-				if self.version>=201902 and self.flag_shock_acceleration:
+				if self.version>=201902:
 					for j in np.arange(3):
 						self.B[:, j]   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				else:
-					self.B[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for j in np.arange(3):
 					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
@@ -536,8 +533,8 @@ class ArepoTracerOutput:
 		   specific_fields (list): List of strings of the variable which should be stored,
 		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
 		      Possible variables names are:
-		       - standard: ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
-		       - shock acceleration: ['B', 'ShockFlag', 'eps_CRp_acc',
+		       - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm', 'eps_photon']
+		       - shock acceleration: ['ShockFlag', 'eps_CRp_acc',
 		                              'n_gasPreShock', 'n_gasPostShock',
 		                              'VShock', 'timeShockCross', 'ShockDir']
 		       - magnetic obliquity: ['theta']
@@ -707,9 +704,9 @@ class ArepoTracerOutput:
 									1]
 
 		elif self._version >= 201903:
-			self._var_name = ['time', 'pos',  'n_gas', 'u_therm', 'eps_photon']
-			self._var_dtype = [np.float64, np.ndarray, np.float32, np.float32, np.float32]
-			self._var_cgs_factor = [L/V, L, N, V**2, E]
+			self._var_name = ['time', 'pos', 'B', 'n_gas', 'u_therm', 'eps_photon']
+			self._var_dtype = [np.float64, np.ndarray, np.ndarray, np.float32, np.float32, np.float32]
+			self._var_cgs_factor = [L/V, L, B, N, V**2, E]
 
 			if self.flag_comoving_integration_on:
 				self._var_name.append('dtValues')
@@ -719,26 +716,19 @@ class ArepoTracerOutput:
 				self._var_cgs_factor[0] = 1		# This value is now the scale factor
 
 			if self.flag_cosmic_ray_shock_acceleration:
-				self._var_name.append(['B', 'ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
+				self._var_name.append(['ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
 										   'n_gasPostShock', 'VShock', 'timeShockCross', 'ShockDir'])
 
-				self._var_dtype.append([np.ndarray, np.int32, np.float32, np.float32,
+				self._var_dtype.append([np.int32, np.float32, np.float32,
 										   np.float32, np.float32, np.float32, np.ndarray])
 
-				self._var_cgs_factor.append([B, 1, E, N,
+				self._var_cgs_factor.append([1, E, N,
 												 N, V, L/V,	1])
 
 				if self.flag_cosmic_ray_magnetic_obliquity:
 					  self._var_name.append('theta')
 					  self._var_dtype.append(np.float32)
 					  self._var_cgs_factor.append(1)
-
-
-			else:
-				self._var_name.append('B')
-				self._var_dtype.append(np.float32)
-				self._var_cgs_factor.append(B)
-
 
 			if self.flag_cosmic_ray_sn_injection:
 				self._var_name.append('eps_CRp_inj')
@@ -870,16 +860,16 @@ class ArepoTracerOutput:
 			pos_y = hf['TracerData/Coordinates/Y'][()].reshape(self.nSnap, self.nPart)
 			pos_z = hf['TracerData/Coordinates/Z'][()].reshape(self.nSnap, self.nPart)
 			self.pos = np.hstack([pos_x, pos_y, pos_z]).reshape(self.nSnap, self.nPart, 3)
+			mag_x = hf['TracerData/MagneticField/X'][()].reshape(self.nSnap, self.nPart)
+			mag_y = hf['TracerData/MagneticField/Y'][()].reshape(self.nSnap, self.nPart)
+			mag_z = hf['TracerData/MagneticField/Z'][()].reshape(self.nSnap, self.nPart)
+			self.B = np.hstack([mag_x, mag_y, mag_z]).reshape(self.nSnap, self.nPart, 3)
 			self.n_gas = hf['TracerData/Density'][()].reshape(self.nSnap, self.nPart)
 			self.u_therm = hf['TracerData/InternalEnergy'][()].reshape(self.nSnap, self.nPart)
 			self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()].reshape(self.nSnap, self.nPart)
 
 			if self.flag_cosmic_ray_shock_acceleration:
 				self.ShockFlag = hf['TracerData/ShockFlag'][()].reshape(self.nSnap, self.nPart)
-				mag_x = hf['TracerData/MagneticField/X'][()].reshape(self.nSnap, self.nPart)
-				mag_y = hf['TracerData/MagneticField/Y'][()].reshape(self.nSnap, self.nPart)
-				mag_z = hf['TracerData/MagneticField/Z'][()].reshape(self.nSnap, self.nPart)
-				self.B = np.hstack([mag_x, mag_y, mag_z]).reshape(self.nSnap, self.nPart, 3)
 				shock_x = hf['TracerData/ShockDirection/X'][()].reshape(self.nSnap, self.nPart)
 				shock_y = hf['TracerData/ShockDirection/Y'][()].reshape(self.nSnap, self.nPart)
 				shock_z = hf['TracerData/ShockDirection/Z'][()].reshape(self.nSnap, self.nPart)
@@ -892,9 +882,6 @@ class ArepoTracerOutput:
 
 				if self.flag_cosmic_ray_sn_injection:
 					self.theta = hf['TracerData/MagneticObliquity'][()].reshape(self.nSnap, self.nPart)
-
-			else:
-				self.B = hf['TracerData/MagneticField'][()].reshape(self.nSnap, self.nPart)
 
 			if self.flag_cosmic_ray_sn_injection:
 				self.eps_CRp_inj = hf['TracerData/InjectionEnergy'][()].reshape(self.nSnap, self.nPart)
@@ -1475,9 +1462,9 @@ class ArepoTracerOutput:
 			header = hf.create_group('Header')
 			group_dat = hf.create_group('TracerData')
 			group_pos = group_dat.create_group('Coordinates')
+			group_mag = group_dat.create_group('MagneticField')
 
 			if self.flag_cosmic_ray_shock_acceleration:
-				group_mag = group_dat.create_group('MagneticField')
 				group_shock = group_dat.create_group('ShockDirection')
 
 			# Datatypes
@@ -1506,16 +1493,16 @@ class ArepoTracerOutput:
 			d3 = group_pos.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
 			d4 = group_pos.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
 
-			d5 = group_dat.create_dataset('Density', (self.nSnap,) , dtype=vlen_double)
-			d6 = group_dat.create_dataset('InternalEnergy', (self.nSnap,) , dtype=vlen_double)
-			d7 = group_dat.create_dataset('PhotonEnergyDensity', (self.nSnap,) , dtype=vlen_double)
+			d5 = group_mag.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
+			d6 = group_mag.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
+			d7 = group_mag.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+
+			d8 = group_dat.create_dataset('Density', (self.nSnap,) , dtype=vlen_double)
+			d9 = group_dat.create_dataset('InternalEnergy', (self.nSnap,) , dtype=vlen_double)
+			d10 = group_dat.create_dataset('PhotonEnergyDensity', (self.nSnap,) , dtype=vlen_double)
 
 			if self.flag_cosmic_ray_shock_acceleration:
-			    d8 = group_dat.create_dataset('ShockFlag', (self.nSnap,) , dtype=vlen_int)
-
-			    d9 = group_mag.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
-			    d10 = group_mag.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
-			    d11 = group_mag.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+			    d11 = group_dat.create_dataset('ShockFlag', (self.nSnap,) , dtype=vlen_int)
 
 			    d12 = group_shock.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
 			    d13 = group_shock.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
@@ -1529,31 +1516,29 @@ class ArepoTracerOutput:
 
 			    if self.flag_cosmic_ray_magnetic_obliquity:
 			        d20 = group_dat.create_dataset('MagneticObliquity', (self.nSnap,) , dtype=vlen_double)
-			else:
-			    d21 = group_dat.create_dataset('MagneticField', (self.nSnap,) , dtype=vlen_double)
 
 			if self.flag_cosmic_ray_sn_injection:
-			    d22 = group_dat.create_dataset('InjectionEnergy', (self.nSnap,) , dtype=vlen_double)
+			    d21 = group_dat.create_dataset('InjectionEnergy', (self.nSnap,) , dtype=vlen_double)
 
-			d23 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=np.float64)
+			d22 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=np.float64)
 
 			if self.flag_comoving_integration_on:
-			    d24 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=np.float64)
+			    d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=np.float64)
 
 			for i in range(self.nSnap):
 				d1[i] = self.ID[i]
 				d2[i] = self.pos[i,:,0]
 				d3[i] = self.pos[i,:,1]
 				d4[i] = self.pos[i,:,2]
-				d5[i] = self.n_gas[i]
-				d6[i] = self.u_therm[i]
-				d7[i] = self.eps_photon[i]
+				d5[i] = self.B[i,:,0]
+				d6[i] = self.B[i,:,1]
+				d7[i] = self.B[i,:,2]
+				d8[i] = self.n_gas[i]
+				d9[i] = self.u_therm[i]
+				d10[i] = self.eps_photon[i]
 
 				if self.flag_cosmic_ray_shock_acceleration:
-					d8[i] = self.ShockFlag[i]
-					d9[i] = self.B[i,:,0]
-					d10[i] = self.B[i,:,1]
-					d11[i] = self.B[i,:,2]
+					d11[i] = self.ShockFlag[i]
 					d12[i] = self.ShockDir[i,:,0]
 					d13[i] = self.ShockDir[i,:,1]
 					d14[i] = self.ShockDir[i,:,2]
@@ -1564,16 +1549,14 @@ class ArepoTracerOutput:
 					d19[i] = self.timeShockCross[i]
 					if self.flag_cosmic_ray_magnetic_obliquity:
 						d20[i] = self.theta[i]
-				else:
-					d21[i] = self.B[i]
 
 				if self.flag_cosmic_ray_sn_injection:
-					d22[i] = self.eps_CRp_inj[i]
+					d21[i] = self.eps_CRp_inj[i]
 
-				d23[i] = self.time[i]
+				d22[i] = self.time[i]
 
 				if self.flag_comoving_integration_on:
-					d24[i] = self.dtValues[i]
+					d23[i] = self.dtValues[i]
 
 			hf.close()
 
