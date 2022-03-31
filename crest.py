@@ -33,10 +33,14 @@ class CrestParameters:
 		self.OutputDir                   = ''
 		self.InputDataFile               = ''
 		self.InputDataFileBase           = ''
+		self.InputTracerDataFileBase	 = ''
+		self.InputArepoDataFileBase		 = ''
 		self.InputFileFirstNum			 = 0
 		self.NumInputFiles				 = 0
 		self.MaxStepsReadIn				 = 0
 		self.SnapshotFileBase            = ''
+		self.OutputFileBase            	 = ''
+		self.OutputVerbose				 = 0
 
 		# Settings for Discretization
 		self.NumberOfMomentumBins        = 0
@@ -233,6 +237,8 @@ class CrestSnapshot:
 		self._var_dtype = None
 		self._var_store = None
 
+		self._use_hdf5 = 1		# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
+
 		if file_name is not None:
 			self.read_data(file_name, verbose=verbose, get_only_header=get_only_header, specific_fields=specific_fields)
 
@@ -242,7 +248,6 @@ class CrestSnapshot:
 			if(verbose):
 				print("Reading snapshot data from file '{:}'".format(file_name))
 
-			self._use_hdf5 = 1
 
 			# Header information
 			blocksize = int(struct.unpack('I', f.read(size_i))[0])
@@ -565,7 +570,6 @@ class ArepoTracerOutput:
 		self._traceroutput_headersize = None
 		self._use_hdf5 = 1			# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
 
-
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
@@ -801,7 +805,7 @@ class ArepoTracerOutput:
 
 	def read_header_hdf5(self, file_base, verbose = False):
 
-		file_name = "{:}_file_000.hdf5".format(file_base)
+		file_name = "{:}_000.hdf5".format(file_base)
 
 		hf = h5py.File(file_name, 'r')
 
@@ -837,9 +841,9 @@ class ArepoTracerOutput:
 		if file_numbers is not None:
 			if type(file_numbers) is int:
 			  file_numbers = [file_numbers]
-			  file_names = ["{:}_file_{:03d}.hdf5".format(file_base, num) for num in file_numbers]
+			  file_names = ["{:}_{:03d}.hdf5".format(file_base, num) for num in file_numbers]
 		else:
-			file_names = ["{:}_file_{:03d}.hdf5".format(file_base, 0)]
+			file_names = ["{:}_{:03d}.hdf5".format(file_base, 0)]
 
 		if verbose:
 			print("Read Arepo's tracer output from file '{}'".format(file_name))
@@ -1451,7 +1455,7 @@ class ArepoTracerOutput:
 
 		if self._use_hdf5:
 
-			file_name_data = "{:}_file_000.hdf5".format(file_name)
+			file_name_data = "{:}_000.hdf5".format(file_name)
 
 			if isfile(file_name_data):
 				print("Warning: File '{:}' already exists and will be overwritten".format(file_name_data))			# Should we ask for user input here? - will this ever need to run on a cluster?
