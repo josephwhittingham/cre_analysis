@@ -858,42 +858,42 @@ class ArepoTracerOutput:
 			self.ID = hf['TracerData/ParticleIDs'][()]
 			self.nSnap = self.ID.shape[0]
 
-			self.ID = self.ID.reshape(self.nSnap, self.nPart)
+			self.ID = np.stack(self.ID).reshape(self.nSnap, self.nPart)
 
-			pos_x = hf['TracerData/Coordinates/X'][()].reshape(self.nSnap, self.nPart)
-			pos_y = hf['TracerData/Coordinates/Y'][()].reshape(self.nSnap, self.nPart)
-			pos_z = hf['TracerData/Coordinates/Z'][()].reshape(self.nSnap, self.nPart)
-			self.pos = np.hstack([pos_x, pos_y, pos_z]).reshape(self.nSnap, self.nPart, 3)
-			mag_x = hf['TracerData/MagneticField/X'][()].reshape(self.nSnap, self.nPart)
-			mag_y = hf['TracerData/MagneticField/Y'][()].reshape(self.nSnap, self.nPart)
-			mag_z = hf['TracerData/MagneticField/Z'][()].reshape(self.nSnap, self.nPart)
-			self.B = np.hstack([mag_x, mag_y, mag_z]).reshape(self.nSnap, self.nPart, 3)
-			self.n_gas = hf['TracerData/Density'][()].reshape(self.nSnap, self.nPart)
-			self.u_therm = hf['TracerData/InternalEnergy'][()].reshape(self.nSnap, self.nPart)
-			self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()].reshape(self.nSnap, self.nPart)
+			pos_x = np.stack(hf['TracerData/Coordinates/X'][()]).reshape(self.nSnap, self.nPart)
+			pos_y = np.stack(hf['TracerData/Coordinates/Y'][()]).reshape(self.nSnap, self.nPart)
+			pos_z = np.stack(hf['TracerData/Coordinates/Z'][()]).reshape(self.nSnap, self.nPart)
+			self.pos = np.stack(np.hstack([pos_x, pos_y, pos_z])).reshape(self.nSnap, self.nPart, 3)
+			mag_x = np.stack(hf['TracerData/MagneticField/X'][()]).reshape(self.nSnap, self.nPart)
+			mag_y = np.stack(hf['TracerData/MagneticField/Y'][()]).reshape(self.nSnap, self.nPart)
+			mag_z = np.stack(hf['TracerData/MagneticField/Z'][()]).reshape(self.nSnap, self.nPart)
+			self.B = np.stack(np.hstack([mag_x, mag_y, mag_z])).reshape(self.nSnap, self.nPart, 3)
+			self.n_gas = np.stack(hf['TracerData/Density'][()]).reshape(self.nSnap, self.nPart)
+			self.u_therm = np.stack(hf['TracerData/InternalEnergy'][()]).reshape(self.nSnap, self.nPart)
+			self.eps_photon = np.stack(hf['TracerData/PhotonEnergyDensity'][()]).reshape(self.nSnap, self.nPart)
 
 			if self.flag_cosmic_ray_shock_acceleration:
-				self.ShockFlag = hf['TracerData/ShockFlag'][()].reshape(self.nSnap, self.nPart)
-				shock_x = hf['TracerData/ShockDirection/X'][()].reshape(self.nSnap, self.nPart)
-				shock_y = hf['TracerData/ShockDirection/Y'][()].reshape(self.nSnap, self.nPart)
-				shock_z = hf['TracerData/ShockDirection/Z'][()].reshape(self.nSnap, self.nPart)
+				self.ShockFlag = np.stack(hf['TracerData/ShockFlag'][()]).reshape(self.nSnap, self.nPart)
+				shock_x = np.stack(hf['TracerData/ShockDirection/X'][()]).reshape(self.nSnap, self.nPart)
+				shock_y = np.stack(hf['TracerData/ShockDirection/Y'][()]).reshape(self.nSnap, self.nPart)
+				shock_z = np.stack(hf['TracerData/ShockDirection/Z'][()]).reshape(self.nSnap, self.nPart)
 				self.ShockDir = np.hstack([shock_x, shock_y, shock_z]).reshape(self.nSnap, self.nPart, 3)
-				self.eps_CRp_acc = hf['TracerData/ShockDissipatedThermalEnergy'][()].reshape(self.nSnap, self.nPart)
-				self.n_gasPreShock = hf['TracerData/PreShockDensity'][()].reshape(self.nSnap, self.nPart)
-				self.n_gasPostShock = hf['TracerData/PostShockDensity'][()].reshape(self.nSnap, self.nPart)
-				self.VShock = hf['TracerData/ShockVelocity'][()].reshape(self.nSnap, self.nPart)
-				self.timeShockCross = hf['TracerData/ShockCrossingTime'][()].reshape(self.nSnap, self.nPart)
+				self.eps_CRp_acc = np.stack(hf['TracerData/ShockDissipatedThermalEnergy'][()]).reshape(self.nSnap, self.nPart)
+				self.n_gasPreShock = np.stack(hf['TracerData/PreShockDensity'][()]).reshape(self.nSnap, self.nPart)
+				self.n_gasPostShock = np.stack(hf['TracerData/PostShockDensity'][()]).reshape(self.nSnap, self.nPart)
+				self.VShock = np.stack(hf['TracerData/ShockVelocity'][()]).reshape(self.nSnap, self.nPart)
+				self.timeShockCross = np.stack(hf['TracerData/ShockCrossingTime'][()]).reshape(self.nSnap, self.nPart)
 
 				if self.flag_cosmic_ray_sn_injection:
-					self.theta = hf['TracerData/MagneticObliquity'][()].reshape(self.nSnap, self.nPart)
+					self.theta = np.stack(hf['TracerData/MagneticObliquity'][()]).reshape(self.nSnap, self.nPart)
 
 			if self.flag_cosmic_ray_sn_injection:
-				self.eps_CRp_inj = hf['TracerData/InjectionEnergy'][()].reshape(self.nSnap, self.nPart)
+				self.eps_CRp_inj = np.stack(hf['TracerData/InjectionEnergy'][()]).reshape(self.nSnap, self.nPart)
 
-			self.time = hf['TracerData/Time'][()].reshape(self.nSnap)
+			self.time = np.stack(hf['TracerData/Time'][()]).reshape(self.nSnap)
 
 			if self.flag_comoving_integration_on:
-				self.dtValues = hf['TracerData/dtValues'][()].reshape(self.nSnap)
+				self.dtValues = np.stack(hf['TracerData/dtValues'][()]).reshape(self.nSnap)
 
 			hf.close()
 
@@ -1316,7 +1316,7 @@ class ArepoTracerOutput:
 			print("Variables are already stored in code units")
 
 
-	def create_new_data(self, nSnap, nPart, version=202001, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
+	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
 						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, hubble_param = 1):
 		""" Create new empty tracer data
