@@ -5,7 +5,6 @@ from Physics import PROTONMASS
 from os.path import isfile
 from matplotlib.cbook import flatten
 import h5py
-import IPython
 
 ####################################################################################################
 # class which handles the parameters needed for calcualting the steady state solutions
@@ -216,7 +215,7 @@ def check_encoding():
 class CrestSnapshot:
 	""" class for spectral snapshots of CREST """
 
-	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None):
+	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None, use_HDF5=True):
 		"""
 		Initialize an instance of CREST snapshot.
 
@@ -237,7 +236,7 @@ class CrestSnapshot:
 		self._var_dtype = None
 		self._var_store = None
 
-		self._use_hdf5 = 1		# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
+		self._use_hdf5 = use_HDF5		# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
 
 		if file_name is not None:
 			self.read_data(file_name, verbose=verbose, get_only_header=get_only_header, specific_fields=specific_fields)
@@ -439,7 +438,7 @@ class CrestSnapshot:
 				if self.version <= 201902:
 					self.parent_cell_id = np.ndarray(self.nPart, dtype=np.uint32)
 
-				if self._use_hdf5 != 1:
+				if self._use_hdf5 == False:
 					self.mass = np.ndarray(self.nPart, dtype=float)
 
 				self.n_gas = np.ndarray(self.nPart, dtype=float)
@@ -454,7 +453,7 @@ class CrestSnapshot:
 				if self.version <= 201902:
 					self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 
-				if self._use_hdf5 != 1:
+				if self._use_hdf5 == False:
 					self.mass[:]           = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				self.n_gas[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
@@ -464,6 +463,8 @@ class CrestSnapshot:
 				if self.version>=201902:
 					for j in np.arange(3):
 						self.B[:, j]   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				else:
+					self.B[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for j in np.arange(3):
 					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
@@ -514,7 +515,7 @@ class ArepoTracerOutput:
 
 
 	# instance variables
-	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True):
+	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
@@ -568,7 +569,7 @@ class ArepoTracerOutput:
 		self._version = None # current default version
 		self._traceroutput_tracersize = None
 		self._traceroutput_headersize = None
-		self._use_hdf5 = 1			# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
+		self._use_hdf5 = use_HDF5			# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
 
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
@@ -712,12 +713,13 @@ class ArepoTracerOutput:
 			self._var_dtype = [np.float64, np.ndarray, np.ndarray, np.float32, np.float32, np.float32]
 			self._var_cgs_factor = [L/V, L, B, N, V**2, E]
 
-			if self.flag_comoving_integration_on:
-				self._var_name.append('dtValues')
-				self._var_dtype.append(np.float64)
-				self._var_cgs_factor.append(L/V)
+			if self._use_hdf5:
+				if self.flag_comoving_integration_on:
+					self._var_name.append('dtValues')
+					self._var_dtype.append(np.float64)
+					self._var_cgs_factor.append(L/V)
 
-				self._var_cgs_factor[0] = 1		# This value is now the scale factor
+					self._var_cgs_factor[0] = 1		# This value is now the scale factor
 
 			if self.flag_cosmic_ray_shock_acceleration:
 				self._var_name.append(['ShockFlag', 'eps_CRp_acc', 'n_gasPreShock',
@@ -863,11 +865,11 @@ class ArepoTracerOutput:
 			pos_x = np.stack(hf['TracerData/Coordinates/X'][()]).reshape(self.nSnap, self.nPart)
 			pos_y = np.stack(hf['TracerData/Coordinates/Y'][()]).reshape(self.nSnap, self.nPart)
 			pos_z = np.stack(hf['TracerData/Coordinates/Z'][()]).reshape(self.nSnap, self.nPart)
-			self.pos = np.stack(np.hstack([pos_x, pos_y, pos_z])).reshape(self.nSnap, self.nPart, 3)
+			self.pos = np.stack(np.array([pos_x.T, pos_y.T, pos_z.T]).T).reshape(self.nSnap, self.nPart, 3)
 			mag_x = np.stack(hf['TracerData/MagneticField/X'][()]).reshape(self.nSnap, self.nPart)
 			mag_y = np.stack(hf['TracerData/MagneticField/Y'][()]).reshape(self.nSnap, self.nPart)
 			mag_z = np.stack(hf['TracerData/MagneticField/Z'][()]).reshape(self.nSnap, self.nPart)
-			self.B = np.stack(np.hstack([mag_x, mag_y, mag_z])).reshape(self.nSnap, self.nPart, 3)
+			self.B = np.stack(np.array([mag_x.T, mag_y.T, mag_z.T]).T).reshape(self.nSnap, self.nPart, 3)
 			self.n_gas = np.stack(hf['TracerData/Density'][()]).reshape(self.nSnap, self.nPart)
 			self.u_therm = np.stack(hf['TracerData/InternalEnergy'][()]).reshape(self.nSnap, self.nPart)
 			self.eps_photon = np.stack(hf['TracerData/PhotonEnergyDensity'][()]).reshape(self.nSnap, self.nPart)
@@ -877,7 +879,7 @@ class ArepoTracerOutput:
 				shock_x = np.stack(hf['TracerData/ShockDirection/X'][()]).reshape(self.nSnap, self.nPart)
 				shock_y = np.stack(hf['TracerData/ShockDirection/Y'][()]).reshape(self.nSnap, self.nPart)
 				shock_z = np.stack(hf['TracerData/ShockDirection/Z'][()]).reshape(self.nSnap, self.nPart)
-				self.ShockDir = np.hstack([shock_x, shock_y, shock_z]).reshape(self.nSnap, self.nPart, 3)
+				self.ShockDir = np.stack(np.array([shock_x.T, shock_y.T, shock_z.T]).T).reshape(self.nSnap, self.nPart, 3)
 				self.eps_CRp_acc = np.stack(hf['TracerData/ShockDissipatedThermalEnergy'][()]).reshape(self.nSnap, self.nPart)
 				self.n_gasPreShock = np.stack(hf['TracerData/PreShockDensity'][()]).reshape(self.nSnap, self.nPart)
 				self.n_gasPostShock = np.stack(hf['TracerData/PostShockDensity'][()]).reshape(self.nSnap, self.nPart)
@@ -1005,13 +1007,13 @@ class ArepoTracerOutput:
 				if type(file_numbers) is int:
 					file_numbers = [file_numbers]
 
-				file_names = ["{:}_file_{:03d}.dat".format(file_base, num) for num in file_numbers]
+				file_names = ["{:}_{:03d}.dat".format(file_base, num) for num in file_numbers]
 			else:
 				file_names = []
 
 
 		if verbose:
-			print("Read Arepo's tracer output from file '{}'".format(file_name))
+			print("Read Arepo's tracer output from file '{}'".format(file_names))
 
 		size_i, size_I, size_f, size_d = check_encoding()
 
