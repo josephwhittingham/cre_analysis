@@ -1007,7 +1007,7 @@ class ArepoTracerOutput:
 				if type(file_numbers) is int:
 					file_numbers = [file_numbers]
 
-				file_names = ["{:}_{:03d}.dat".format(file_base, num) for num in file_numbers]
+				file_names = ["{:}_file_{:03d}.dat".format(file_base, num) for num in file_numbers]
 			else:
 				file_names = []
 
@@ -1474,8 +1474,11 @@ class ArepoTracerOutput:
 				group_shock = group_dat.create_group('ShockDirection')
 
 			# Datatypes
-			vlen_int = h5py.vlen_dtype(np.dtype(np.int32))
-			vlen_double = h5py.vlen_dtype(np.dtype(np.float64))
+			int = np.int32
+			float = np.float32
+			double =np.float64
+
+			len_tracer_data = self.nSnap * self.nPart
 
 			# Header info
 			header.attrs['TracerOutputVersion'] = self._version
@@ -1483,7 +1486,7 @@ class ArepoTracerOutput:
 			header.attrs['CosmicRaysMagneticObliquityFlag'] = int(self.flag_cosmic_ray_magnetic_obliquity)
 			header.attrs['CosmicRaysSNInjectionFlag'] = int(self.flag_cosmic_ray_sn_injection)
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
-			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=np.float64)
+			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=int)
 
 			header.attrs['UnitLength_in_cm'] = self.UnitLength_in_cm
 			header.attrs['UnitMass_in_g'] = self.UnitMass_in_g
@@ -1493,76 +1496,83 @@ class ArepoTracerOutput:
 			    header.attrs['HubbleParam'] = self.hubble_param
 
 			# Tracer data
-			d1 = group_dat.create_dataset('ParticleIDs', (self.nSnap,) , dtype=vlen_int)
+			d1 = group_dat.create_dataset('ParticleIDs', (len_tracer_data) , dtype=int)
 
-			d2 = group_pos.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
-			d3 = group_pos.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
-			d4 = group_pos.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+			d2 = group_pos.create_dataset('X', (len_tracer_data) , dtype=float)
+			d3 = group_pos.create_dataset('Y', (len_tracer_data) , dtype=float)
+			d4 = group_pos.create_dataset('Z', (len_tracer_data) , dtype=float)
 
-			d5 = group_mag.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
-			d6 = group_mag.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
-			d7 = group_mag.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+			d5 = group_mag.create_dataset('X', (len_tracer_data,) , dtype=float)
+			d6 = group_mag.create_dataset('Y', (len_tracer_data) , dtype=float)
+			d7 = group_mag.create_dataset('Z', (len_tracer_data) , dtype=float)
 
-			d8 = group_dat.create_dataset('Density', (self.nSnap,) , dtype=vlen_double)
-			d9 = group_dat.create_dataset('InternalEnergy', (self.nSnap,) , dtype=vlen_double)
-			d10 = group_dat.create_dataset('PhotonEnergyDensity', (self.nSnap,) , dtype=vlen_double)
+			d8 = group_dat.create_dataset('Density', (len_tracer_data) , dtype=float)
+			d9 = group_dat.create_dataset('InternalEnergy', (len_tracer_data) , dtype=float)
+			d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data) , dtype=float)
 
 			if self.flag_cosmic_ray_shock_acceleration:
-			    d11 = group_dat.create_dataset('ShockFlag', (self.nSnap,) , dtype=vlen_int)
+			    d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data) , dtype=int)
 
-			    d12 = group_shock.create_dataset('X', (self.nSnap,) , dtype=vlen_double)
-			    d13 = group_shock.create_dataset('Y', (self.nSnap,) , dtype=vlen_double)
-			    d14 = group_shock.create_dataset('Z', (self.nSnap,) , dtype=vlen_double)
+			    d12 = group_shock.create_dataset('X', (len_tracer_data) , dtype=float)
+			    d13 = group_shock.create_dataset('Y', (len_tracer_data) , dtype=float)
+			    d14 = group_shock.create_dataset('Z', (len_tracer_data) , dtype=float)
 
-			    d15 = group_dat.create_dataset('ShockDissipatedThermalEnergy', (self.nSnap,) , dtype=vlen_double)
-			    d16 = group_dat.create_dataset('PreShockDensity', (self.nSnap,) , dtype=vlen_double)
-			    d17 = group_dat.create_dataset('PostShockDensity', (self.nSnap,) , dtype=vlen_double)
-			    d18 = group_dat.create_dataset('ShockVelocity', (self.nSnap,) , dtype=vlen_double)
-			    d19 = group_dat.create_dataset('ShockCrossingTime', (self.nSnap,) , dtype=vlen_double)
+			    d15 = group_dat.create_dataset('ShockDissipatedThermalEnergy', (len_tracer_data) , dtype=float)
+			    d16 = group_dat.create_dataset('PreShockDensity', (len_tracer_data) , dtype=float)
+			    d17 = group_dat.create_dataset('PostShockDensity', (len_tracer_data) , dtype=float)
+			    d18 = group_dat.create_dataset('ShockVelocity', (len_tracer_data) , dtype=float)
+			    d19 = group_dat.create_dataset('ShockCrossingTime', (len_tracer_data) , dtype=float)
 
 			    if self.flag_cosmic_ray_magnetic_obliquity:
-			        d20 = group_dat.create_dataset('MagneticObliquity', (self.nSnap,) , dtype=vlen_double)
+			        d20 = group_dat.create_dataset('MagneticObliquity', (len_tracer_data) , dtype=float)
 
 			if self.flag_cosmic_ray_sn_injection:
-			    d21 = group_dat.create_dataset('InjectionEnergy', (self.nSnap,) , dtype=vlen_double)
+			    d21 = group_dat.create_dataset('InjectionEnergy', (len_tracer_data) , dtype=float)
 
-			d22 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=np.float64)
+			d22 = group_dat.create_dataset('Time', (self.nSnap) , dtype=double)
 
 			if self.flag_comoving_integration_on:
-			    d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=np.float64)
+			    d23 = group_dat.create_dataset('dtValues', (self.nSnap) , dtype=double)
+
+			d24 = group_dat.create_dataset('TimestepLastIndex', (self.nSnap), dtype=int)
+
+			last_index = 0
 
 			for i in range(self.nSnap):
-				d1[i] = self.ID[i]
-				d2[i] = self.pos[i,:,0]
-				d3[i] = self.pos[i,:,1]
-				d4[i] = self.pos[i,:,2]
-				d5[i] = self.B[i,:,0]
-				d6[i] = self.B[i,:,1]
-				d7[i] = self.B[i,:,2]
-				d8[i] = self.n_gas[i]
-				d9[i] = self.u_therm[i]
-				d10[i] = self.eps_photon[i]
+				d1[i] = self.ID[i].flatten()
+				d2[i] = self.pos[i,:,0].flatten()
+				d3[i] = self.pos[i,:,1].flatten()
+				d4[i] = self.pos[i,:,2].flatten()
+				d5[i] = self.B[i,:,0].flatten()
+				d6[i] = self.B[i,:,1].flatten()
+				d7[i] = self.B[i,:,2].flatten()
+				d8[i] = self.n_gas[i].flatten()
+				d9[i] = self.u_therm[i].flatten()
+				d10[i] = self.eps_photon[i].flatten()
 
 				if self.flag_cosmic_ray_shock_acceleration:
-					d11[i] = self.ShockFlag[i]
-					d12[i] = self.ShockDir[i,:,0]
-					d13[i] = self.ShockDir[i,:,1]
-					d14[i] = self.ShockDir[i,:,2]
-					d15[i] = self.eps_CRp_acc[i]
-					d16[i] = self.n_gasPreShock[i]
-					d17[i] = self.n_gasPostShock[i]
-					d18[i] = self.VShock[i]
-					d19[i] = self.timeShockCross[i]
+					d11[i] = self.ShockFlag[i].flatten()
+					d12[i] = self.ShockDir[i,:,0].flatten()
+					d13[i] = self.ShockDir[i,:,1].flatten()
+					d14[i] = self.ShockDir[i,:,2].flatten()
+					d15[i] = self.eps_CRp_acc[i].flatten()
+					d16[i] = self.n_gasPreShock[i].flatten()
+					d17[i] = self.n_gasPostShock[i].flatten()
+					d18[i] = self.VShock[i].flatten()
+					d19[i] = self.timeShockCross[i].flatten()
 					if self.flag_cosmic_ray_magnetic_obliquity:
-						d20[i] = self.theta[i]
+						d20[i] = self.theta[i].flatten()
 
 				if self.flag_cosmic_ray_sn_injection:
-					d21[i] = self.eps_CRp_inj[i]
+					d21[i] = self.eps_CRp_inj[i].flatten()
 
-				d22[i] = self.time[i]
+				d22[i] = self.time[i].flatten()
 
 				if self.flag_comoving_integration_on:
-					d23[i] = self.dtValues[i]
+					d23[i] = self.dtValues[i].flatten()
+
+				last_index += len(self.ID[i])
+				d24[i] = last_index
 
 			hf.close()
 
