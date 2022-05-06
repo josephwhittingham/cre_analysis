@@ -515,7 +515,7 @@ class ArepoTracerOutput:
 
 
 	# instance variables
-	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True):
+	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True, check_dims=True):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
@@ -574,7 +574,7 @@ class ArepoTracerOutput:
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
-			self.read_data_hdf5(file_base, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
+			self.read_data_hdf5(file_base, check_dims=check_dims, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
 
 		elif file_base is not None:
 			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
@@ -836,7 +836,7 @@ class ArepoTracerOutput:
 			print("Header was read successfully")
 
 
-	def read_data_hdf5(self, file_base, file_numbers=None, cgs_units = False, verbose = False):
+	def read_data_hdf5(self, file_base, check_dims, file_numbers=None, cgs_units = False, verbose = False):
 
 		self.initialize_variables()
 
@@ -857,47 +857,73 @@ class ArepoTracerOutput:
 
 			hf = h5py.File(file_name, 'r')
 
+			self.time = hf['TracerData/Time'][()]
+
+			self.nSnap = self.time.shape[0]
+
 			self.ID = hf['TracerData/ParticleIDs'][()]
-			self.nSnap = self.ID.shape[0]
-
-			self.ID = np.stack(self.ID).reshape(self.nSnap, self.nPart)
-
-			pos_x = np.stack(hf['TracerData/Coordinates/X'][()]).reshape(self.nSnap, self.nPart)
-			pos_y = np.stack(hf['TracerData/Coordinates/Y'][()]).reshape(self.nSnap, self.nPart)
-			pos_z = np.stack(hf['TracerData/Coordinates/Z'][()]).reshape(self.nSnap, self.nPart)
-			self.pos = np.stack(np.array([pos_x.T, pos_y.T, pos_z.T]).T).reshape(self.nSnap, self.nPart, 3)
-			mag_x = np.stack(hf['TracerData/MagneticField/X'][()]).reshape(self.nSnap, self.nPart)
-			mag_y = np.stack(hf['TracerData/MagneticField/Y'][()]).reshape(self.nSnap, self.nPart)
-			mag_z = np.stack(hf['TracerData/MagneticField/Z'][()]).reshape(self.nSnap, self.nPart)
-			self.B = np.stack(np.array([mag_x.T, mag_y.T, mag_z.T]).T).reshape(self.nSnap, self.nPart, 3)
-			self.n_gas = np.stack(hf['TracerData/Density'][()]).reshape(self.nSnap, self.nPart)
-			self.u_therm = np.stack(hf['TracerData/InternalEnergy'][()]).reshape(self.nSnap, self.nPart)
-			self.eps_photon = np.stack(hf['TracerData/PhotonEnergyDensity'][()]).reshape(self.nSnap, self.nPart)
+			pos_x = hf['TracerData/Coordinates/X'][()]
+			pos_y = hf['TracerData/Coordinates/Y'][()]
+			pos_z = hf['TracerData/Coordinates/Z'][()]
+			self.pos = np.array([pos_x.T, pos_y.T, pos_z.T]).T
+			mag_x = hf['TracerData/MagneticField/X'][()]
+			mag_y = hf['TracerData/MagneticField/Y'][()]
+			mag_z = hf['TracerData/MagneticField/Z'][()]
+			self.B = np.array([mag_x.T, mag_y.T, mag_z.T]).T
+			self.n_gas = hf['TracerData/Density'][()]
+			self.u_therm = hf['TracerData/InternalEnergy'][()]
+			self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
 
 			if self.flag_cosmic_ray_shock_acceleration:
-				self.ShockFlag = np.stack(hf['TracerData/ShockFlag'][()]).reshape(self.nSnap, self.nPart)
-				shock_x = np.stack(hf['TracerData/ShockDirection/X'][()]).reshape(self.nSnap, self.nPart)
-				shock_y = np.stack(hf['TracerData/ShockDirection/Y'][()]).reshape(self.nSnap, self.nPart)
-				shock_z = np.stack(hf['TracerData/ShockDirection/Z'][()]).reshape(self.nSnap, self.nPart)
-				self.ShockDir = np.stack(np.array([shock_x.T, shock_y.T, shock_z.T]).T).reshape(self.nSnap, self.nPart, 3)
-				self.eps_CRp_acc = np.stack(hf['TracerData/ShockDissipatedThermalEnergy'][()]).reshape(self.nSnap, self.nPart)
-				self.n_gasPreShock = np.stack(hf['TracerData/PreShockDensity'][()]).reshape(self.nSnap, self.nPart)
-				self.n_gasPostShock = np.stack(hf['TracerData/PostShockDensity'][()]).reshape(self.nSnap, self.nPart)
-				self.VShock = np.stack(hf['TracerData/ShockVelocity'][()]).reshape(self.nSnap, self.nPart)
-				self.timeShockCross = np.stack(hf['TracerData/ShockCrossingTime'][()]).reshape(self.nSnap, self.nPart)
+				self.ShockFlag = hf['TracerData/ShockFlag'][()]
+				shock_x = hf['TracerData/ShockDirection/X'][()]
+				shock_y = hf['TracerData/ShockDirection/Y'][()]
+				shock_z = hf['TracerData/ShockDirection/Z'][()]
+				self.ShockDir = np.array([shock_x.T, shock_y.T, shock_z.T]).T
+				self.eps_CRp_acc = hf['TracerData/ShockDissipatedThermalEnergy'][()]
+				self.n_gasPreShock = hf['TracerData/PreShockDensity'][()]
+				self.n_gasPostShock = hf['TracerData/PostShockDensity'][()]
+				self.VShock = hf['TracerData/ShockVelocity'][()]
+				self.timeShockCross = hf['TracerData/ShockCrossingTime'][()]
 
 				if self.flag_cosmic_ray_sn_injection:
-					self.theta = np.stack(hf['TracerData/MagneticObliquity'][()]).reshape(self.nSnap, self.nPart)
+					self.theta = hf['TracerData/MagneticObliquity'][()]
 
 			if self.flag_cosmic_ray_sn_injection:
-				self.eps_CRp_inj = np.stack(hf['TracerData/InjectionEnergy'][()]).reshape(self.nSnap, self.nPart)
-
-			self.time = np.stack(hf['TracerData/Time'][()]).reshape(self.nSnap)
+				self.eps_CRp_inj = hf['TracerData/InjectionEnergy'][()]
 
 			if self.flag_comoving_integration_on:
-				self.dtValues = np.stack(hf['TracerData/dtValues'][()]).reshape(self.nSnap)
+				self.dtValues = hf['TracerData/dtValues'][()]
 
 			hf.close()
+
+			if(check_dims):
+				print("Checking data dimensions are of shape (nSnap, nPart)\n")
+
+				self.ID = self.ID.reshape(self.nSnap, self.nPart)
+				self.pos = self.pos.reshape(self.nSnap, self.nPart, 3)
+				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
+				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
+				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
+				self.eps_photon = self.eps_photon.reshape(self.nSnap, self.nPart)
+
+				if self.flag_cosmic_ray_shock_acceleration:
+					self.ShockFlag = self.ShockFlag.reshape(self.nSnap, self.nPart)
+					self.ShockDir = self.ShockDir.reshape(self.nSnap, self.nPart, 3)
+					self.eps_CRp_acc = self.eps_CRp_acc.reshape(self.nSnap, self.nPart)
+					self.n_gasPreShock = self.n_gasPreShock.reshape(self.nSnap, self.nPart)
+					self.n_gasPostShock = self.n_gasPostShock.reshape(self.nSnap, self.nPart)
+					self.VShock = self.VShock.reshape(self.nSnap, self.nPart)
+					self.timeShockCross = self.timeShockCross.reshape(self.nSnap, self.nPart)
+
+					if self.flag_cosmic_ray_sn_injection:
+						self.theta = self.theta.reshape(self.nSnap, self.nPart)
+
+				if self.flag_cosmic_ray_sn_injection:
+					self.eps_CRp_inj = self.eps_CRp_inj.reshape(self.nSnap, self.nPart)
+
+				if self.flag_comoving_integration_on:
+					self.dtValues = self.dtValues.reshape(self.nSnap)
 
 		if verbose:
 			print("Data was read successfully")
