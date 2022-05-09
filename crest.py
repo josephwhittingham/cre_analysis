@@ -515,7 +515,7 @@ class ArepoTracerOutput:
 
 
 	# instance variables
-	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True, check_dims=True):
+	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True, reshape_output=True):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
@@ -574,7 +574,7 @@ class ArepoTracerOutput:
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
-			self.read_data_hdf5(file_base, check_dims=check_dims, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
+			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
 
 		elif file_base is not None:
 			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
@@ -836,7 +836,7 @@ class ArepoTracerOutput:
 			print("Header was read successfully")
 
 
-	def read_data_hdf5(self, file_base, check_dims, file_numbers=None, cgs_units = False, verbose = False):
+	def read_data_hdf5(self, file_base, reshape_output, file_numbers=None, cgs_units = False, verbose = False):
 
 		self.initialize_variables()
 
@@ -897,8 +897,9 @@ class ArepoTracerOutput:
 
 			hf.close()
 
-			if(check_dims):
-				print("Checking data dimensions are of shape (nSnap, nPart)\n")
+			if(reshape_output):
+				print("CRE_ANALYSIS: reshape_output=True")
+				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
 
 				self.ID = self.ID.reshape(self.nSnap, self.nPart)
 				self.pos = self.pos.reshape(self.nSnap, self.nPart, 3)
