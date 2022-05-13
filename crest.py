@@ -899,8 +899,8 @@ class ArepoTracerOutput:
 			hf.close()
 
 			if(reshape_output):
-				print("""CRE_ANALYSIS: reshape_output=True\n
-					     CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n""")
+				print("CRE_ANALYSIS: reshape_output=True")
+				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
 
 				self.ID = self.ID.reshape(self.nSnap, self.nPart)
 				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
@@ -1526,45 +1526,45 @@ class ArepoTracerOutput:
 			    header.attrs['HubbleParam'] = self.hubble_param
 
 			# Tracer data
-			d1 = group_dat.create_dataset('ParticleIDs', (len_tracer_data) , dtype=int)
+			d1 = group_dat.create_dataset('ParticleIDs', (len_tracer_data,) , dtype=int)
 
-			d2 = group_pos.create_dataset('X', (len_tracer_data) , dtype=float)
-			d3 = group_pos.create_dataset('Y', (len_tracer_data) , dtype=float)
-			d4 = group_pos.create_dataset('Z', (len_tracer_data) , dtype=float)
+			d2 = group_pos.create_dataset('X', (len_tracer_data,) , dtype=float)
+			d3 = group_pos.create_dataset('Y', (len_tracer_data,) , dtype=float)
+			d4 = group_pos.create_dataset('Z', (len_tracer_data,) , dtype=float)
 
 			d5 = group_mag.create_dataset('X', (len_tracer_data,) , dtype=float)
-			d6 = group_mag.create_dataset('Y', (len_tracer_data) , dtype=float)
-			d7 = group_mag.create_dataset('Z', (len_tracer_data) , dtype=float)
+			d6 = group_mag.create_dataset('Y', (len_tracer_data,) , dtype=float)
+			d7 = group_mag.create_dataset('Z', (len_tracer_data,) , dtype=float)
 
-			d8 = group_dat.create_dataset('Density', (len_tracer_data) , dtype=float)
-			d9 = group_dat.create_dataset('InternalEnergy', (len_tracer_data) , dtype=float)
-			d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data) , dtype=float)
+			d8 = group_dat.create_dataset('Density', (len_tracer_data,) , dtype=float)
+			d9 = group_dat.create_dataset('InternalEnergy', (len_tracer_data,) , dtype=float)
+			d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data,) , dtype=float)
 
 			if self.flag_cosmic_ray_shock_acceleration:
-			    d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data) , dtype=int)
+			    d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data,) , dtype=int)
 
-			    d12 = group_shock.create_dataset('X', (len_tracer_data) , dtype=float)
-			    d13 = group_shock.create_dataset('Y', (len_tracer_data) , dtype=float)
-			    d14 = group_shock.create_dataset('Z', (len_tracer_data) , dtype=float)
+			    d12 = group_shock.create_dataset('X', (len_tracer_data,) , dtype=float)
+			    d13 = group_shock.create_dataset('Y', (len_tracer_data,) , dtype=float)
+			    d14 = group_shock.create_dataset('Z', (len_tracer_data,) , dtype=float)
 
-			    d15 = group_dat.create_dataset('ShockDissipatedThermalEnergy', (len_tracer_data) , dtype=float)
-			    d16 = group_dat.create_dataset('PreShockDensity', (len_tracer_data) , dtype=float)
-			    d17 = group_dat.create_dataset('PostShockDensity', (len_tracer_data) , dtype=float)
-			    d18 = group_dat.create_dataset('ShockVelocity', (len_tracer_data) , dtype=float)
-			    d19 = group_dat.create_dataset('ShockCrossingTime', (len_tracer_data) , dtype=float)
+			    d15 = group_dat.create_dataset('ShockDissipatedThermalEnergy', (len_tracer_data,) , dtype=float)
+			    d16 = group_dat.create_dataset('PreShockDensity', (len_tracer_data,) , dtype=float)
+			    d17 = group_dat.create_dataset('PostShockDensity', (len_tracer_data,) , dtype=float)
+			    d18 = group_dat.create_dataset('ShockVelocity', (len_tracer_data,) , dtype=float)
+			    d19 = group_dat.create_dataset('ShockCrossingTime', (len_tracer_data,) , dtype=float)
 
 			    if self.flag_cosmic_ray_magnetic_obliquity:
-			        d20 = group_dat.create_dataset('MagneticObliquity', (len_tracer_data) , dtype=float)
+			        d20 = group_dat.create_dataset('MagneticObliquity', (len_tracer_data,) , dtype=float)
 
 			if self.flag_cosmic_ray_sn_injection:
-			    d21 = group_dat.create_dataset('InjectionEnergy', (len_tracer_data) , dtype=float)
+			    d21 = group_dat.create_dataset('InjectionEnergy', (len_tracer_data,) , dtype=float)
 
-			d22 = group_dat.create_dataset('Time', (self.nSnap) , dtype=double)
+			d22 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=double)
 
 			if self.flag_comoving_integration_on:
-			    d23 = group_dat.create_dataset('dtValues', (self.nSnap) , dtype=double)
+			    d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=double)
 
-			d24 = group_dat.create_dataset('TimestepLastIndex', (self.nSnap), dtype=int)
+			d24 = group_dat.create_dataset('TimestepLastIndex', (self.nSnap,), dtype=int)
 
 			last_index = 0
 
