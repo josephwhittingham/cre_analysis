@@ -816,10 +816,11 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_magnetic_obliquity = hf['Header'].attrs['CosmicRaysMagneticObliquityFlag']
 		self.flag_cosmic_ray_sn_injection = hf['Header'].attrs['CosmicRaysSNInjectionFlag']
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
+		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
 
 		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
 
-		self.nPart = len(self.AllIDs)
+		self.nPart = self.AllIDs.shape[0]
 
 		self.UnitLength_in_cm = hf['Header'].attrs['UnitLength_in_cm']
 		self.UnitMass_in_g = hf['Header'].attrs['UnitMass_in_g']
@@ -858,9 +859,6 @@ class ArepoTracerOutput:
 			hf = h5py.File(file_name, 'r')
 
 			self.time = hf['TracerData/Time'][()]
-
-			self.nSnap = self.time.shape[0]
-
 			self.ID = hf['TracerData/ParticleIDs'][()]
 			pos_x = hf['TracerData/Coordinates/X'][()]
 			pos_y = hf['TracerData/Coordinates/Y'][()]
@@ -895,14 +893,17 @@ class ArepoTracerOutput:
 			if self.flag_comoving_integration_on:
 				self.dtValues = hf['TracerData/dtValues'][()]
 
+			self.nSnap = self.time.shape[0]
+			self.nPos = int(self.pos.shape[0]/self.nPart)
+
 			hf.close()
 
 			if(reshape_output):
-				print("CRE_ANALYSIS: reshape_output=True")
-				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
+				print("""CRE_ANALYSIS: reshape_output=True\n
+					     CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n""")
 
 				self.ID = self.ID.reshape(self.nSnap, self.nPart)
-				self.pos = self.pos.reshape(self.nSnap, self.nPart, 3)
+				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
 				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
 				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
 				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
@@ -1347,7 +1348,7 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
-						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, hubble_param = 1):
+						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True, hubble_param = 1):
 		""" Create new empty tracer data
 
 		Args:
@@ -1381,6 +1382,7 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_magnetic_obliquity = flag_cosmic_ray_magnetic_obliquity
 		self.flag_cosmic_ray_sn_injection = flag_cosmic_ray_sn_injection
 		self.flag_comoving_integration_on = flag_comoving_integration_on
+		self.flag_tracer_pos_every_timestep = flag_tracer_pos_every_timestep
 
 		self.UnitLength_in_cm = UnitLength_in_cm
 		self.UnitMass_in_g = UnitMass_in_g
@@ -1513,6 +1515,7 @@ class ArepoTracerOutput:
 			header.attrs['CosmicRaysMagneticObliquityFlag'] = int(self.flag_cosmic_ray_magnetic_obliquity)
 			header.attrs['CosmicRaysSNInjectionFlag'] = int(self.flag_cosmic_ray_sn_injection)
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
+			header.attrs['TracerPositionEveryTimestepFlag'] = int(self.flag_tracer_pos_every_timestep)
 			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=int)
 
 			header.attrs['UnitLength_in_cm'] = self.UnitLength_in_cm
