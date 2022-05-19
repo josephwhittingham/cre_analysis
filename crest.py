@@ -290,135 +290,6 @@ class CrestSnapshot:
 			# Data
 			if not get_only_header:
 
-				# # Version specific setups
-				# if self.version == 201903:
-				# 	self._var_name = ['id','mass', 'n_gas', 'u_therm',\
-				# 					  'eps_photon', 'B', 'pos', 'f']
-
-				# 	# types of the variable
-				# 	# we assume the types 'np.array' to be of lenght 3 and dtype np.float32
-				# 	self._var_dtype = [np.uint32,  np.float64, np.float64, np.float64,\
-				# 					   np.float64, np.float64, np.float64, np.float64]
-
-				# 	# For scalars length is 1, otherwise it is the length of the array
-				# 	self._var_length = [1, 1, 1, 1,\
-				# 						1, 3, 3, self.nBins]
-
-
-				# elif self.version == 201902 or self.version == 201901:
-				# 	self._var_name = ['id', 'parent_cell_id', 'mass', 'n_gas',\
-				# 					  'u_therm', 'eps_photon', 'B', 'pos', 'f']
-
-				# 	# types of the variable
-				# 	# we assume the types 'np.array' to be of lenght 3 and dtype np.float32
-				# 	self._var_dtype = [np.uint32,  np.unit32, np.float64,  np.float64, \
-				# 					   np.float64, np.float64, np.float64, np.float64, np.float64]
-
-				# 	# For scalars length is 1, otherwise it is the length of the array
-				# 	self._var_length = [1, 1, 1, 1,\
-				# 						1, 1, 3, 3, self.nBins]
-
-				# else:
-				# 	sys.exit("Version {:d} not supported".format(self.version))
-
-				# if len(self._var_name) != len(self._var_dtype) or len(self._var_name) != len(self._var_dtype):
-				# 	sys.exit("Arrays of variable names and types need to have the same length")
-
-				# # will the variable be stored or not
-				# self._var_store = np.ones(len(self._var_name), dtype=bool) # array filled with True
-
-				# if specific_fields is not None:
-				# # make no storage default, invert var_store array
-				# 	np.logical_not(self._var_store, out=self._var_store)
-
-				# 	for sf in specific_fields:
-				# 		if sf in self._var_name:
-				# 			self._var_store[ self._var_name.index(sf) ] = True
-				# 		else:
-				# 			sys.exit("Variable '{:}' does not exist in tracer output!".format(sf))
-
-				# for i in np.arange(len(self._var_name)):
-				# 	# Create nPart x nSnap size arrays for all variables if var_store element is true
-				# 	if self._var_store[i] and self._var_length[i] > 1:
-				# 		setattr(self, self._var_name[i], np.ndarray((self.nPart, self._var_length), dtype=self._var_dtype[i]))
-				# 	elif self._var_store[i] and self._var_length[i] == 1:
-				# 		setattr(self, self._var_name[i], np.ndarray(self.nPart, dtype=self._var_dtype[i]))
-
-				# 	# loop over all possible variables
-				# 	for i in np.arange(len(self._var_name)):
-
-				# 		# if variable should be stored, check the type and read from file in the correct format
-				# 		if self._var_store[i]:
-
-				# 			# Array like variables with dimensions stored separately
-				# 			if self._var_length[i] > 1 and self._var_name[i] != 'f':
-				# 				for j in np.arange(self._var_length[i]): # iterate over dimensions
-				# 					if self._var_dtype[i] == np.uint32:
-				# 						getattr(self, self._var_name[i])[:, j] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
-				# 					elif self._var_dtype[i] == np.int32:
-				# 						getattr(self, self._var_name[i])[:, j] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-				# 					elif self._var_dtype[i] == np.float32:
-				# 						getattr(self, self._var_name[i])[:, j] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				# 					elif self._var_dtype[i] == np.float64:
-				# 						getattr(self, self._var_name[i])[:, j] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				# 					else:
-				# 						sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-				# 			# Spectrum where entire array for one particle is stored at once
-				# 			elif self._var_length[i] > 1 and self._var_name[i] == 'f':
-				# 				for k in np.arange(self.nPart): #iterate over particles
-				# 					if self._var_dtype[i] == np.uint32:
-				# 						getattr(self, self._var_name[i])[k, :] = struct.unpack('{:d}I'.format(self.nBins), f.read(size_I * self.nBins))
-				# 					elif self._var_dtype[i] == np.int32:
-				# 						getattr(self, self._var_name[i])[k, :] = struct.unpack('{:d}i'.format(self.nBins), f.read(size_i * self.nBins))
-				# 					elif self._var_dtype[i] == np.float32:
-				# 						getattr(self, self._var_name[i])[k, :] = struct.unpack('{:d}f'.format(self.nBins), f.read(size_f * self.nBins))
-				# 					elif self._var_dtype[i] == np.float64:
-				# 						getattr(self, self._var_name[i])[k, :] = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
-				# 					else:
-				# 						sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
-				# 			elif self._var_length[i] == 1:
-				# 				if self._var_dtype[i] == np.uint32:
-				# 					getattr(self, self._var_name[i])[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
-				# 				elif self._var_dtype[i] == np.int32:
-				# 					getattr(self, self._var_name[i])[:] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-				# 				elif self._var_dtype[i] == np.float32:
-				# 					getattr(self, self._var_name[i])[:] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				# 				elif self._var_dtype[i] == np.float64:
-				# 					getattr(self, self._var_name[i])[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				# 				else:
-				# 					sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-				# 			else:
-				# 				sys.exit("Something is not correctly defined for variable '{:}' with type '{:}' and length '{:d}'".format(self._var_name[i], self._var_dtype, self._var_length))
-
-
-				# 			if self._var_dtype[i] == np.uint32:
-				# 				getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart)) # equivalent to e.g. self.ID[n, :] = struct.unpack( ... )
-				# 			elif self._var_dtype[i] == np.int32:
-				# 				getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}i'.format(self.nPart), f.read(size_i * self.nPart))
-				# 			elif self._var_dtype[i] == np.float32:
-				# 				getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				# 			elif self._var_dtype[i] == np.float64:
-				# 				getattr(self, self._var_name[i])[n, :] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				# 			elif self._var_dtype[i] == np.ndarray:
-				# 				for j in np.arange(3):
-				# 					getattr(self, self._var_name[i])[n, :, j] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))
-				# 			else:
-				# 				sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-				# 		else:
-				# 			#if variable should not be stored, skip right number of bytes in file
-				# 			if self._var_dtype[i] == np.uint32:
-				# 				f.seek(size_I * self.nPart * self._var_length, 1)
-				# 			elif self._var_dtype[i] == np.int32:
-				# 				f.seek(size_i * self.nPart * self._var_length, 1)
-				# 			elif self._var_dtype[i] == np.float32:
-				# 				f.seek(size_f * self.nPart * self._var_length, 1)
-				# 			elif self._var_dtype[i] == np.float64:
-				# 				f.seek(size_d * self.nPart * self._var_length, 1)
-				# 			else:
-				# 				sys.exit("Data of type '{:}' not supported".format(self._var_dtype[i]))
-
 				# Spectrum Data
 				blocksize = int(struct.unpack('I', f.read(size_i))[0])
 				if self.version >= 201903:
@@ -911,6 +782,27 @@ class ArepoTracerOutput:
 
 				if self.flag_cosmic_ray_shock_acceleration:
 					self.ShockFlag = self.ShockFlag.reshape(self.nSnap, self.nPart)
+
+					zeros = np.zeros([self.nSnap, self.nPart, 3])
+					zeros[np.where(self.ShockFlag > 1)] = self.ShockDir
+					self.ShockDir = zeros
+
+					zeros = np.zeros([self.nSnap, self.nPart])
+					zeros[np.where(self.ShockFlag > 1)] = self.eps_CRp_acc
+					self.eps_CRp_acc = zeros
+					zeros[np.where(self.ShockFlag > 1)] = self.n_gasPreShock
+					self.n_gasPreShock = zeros
+					zeros[np.where(self.ShockFlag > 1)] = self.n_gasPostShock
+					self.n_gasPostShock = zeros
+					zeros[np.where(self.ShockFlag > 1)] = self.VShock
+					self.VShock = zeros
+					zeros[np.where(self.ShockFlag > 1)] = self.timeShockCross
+					self.timeShockCross = zeros
+
+					if self.flag_cosmic_ray_sn_injection:
+						zeros[np.where(self.ShockFlag > 1)] = self.theta
+						self.timeShockCross = zeros
+
 					self.ShockDir = self.ShockDir.reshape(self.nSnap, self.nPart, 3)
 					self.eps_CRp_acc = self.eps_CRp_acc.reshape(self.nSnap, self.nPart)
 					self.n_gasPreShock = self.n_gasPreShock.reshape(self.nSnap, self.nPart)
