@@ -79,4 +79,4 @@ t_end = time.perf_counter()
 #IPython.embed()
 
 print("\nWrote initial positions for {:d} particles to file: {:s}\n".format(tot_num_tracers, file_name))
-print("Timings (in secs):\nArrange axes:\t\t{:.3g}\nMesh grid:\t\t{:.3g}\nSwap axes:\t\t{:.3g}\nMake list of IDs:\t{:.3g}\nWrite to file:\t\t{:.3g}\nTotal:\t\t\t{:.3g}\n".format(t_1-t_start, t_2-t_1, t_3-t_2, t_4-t_3, t_end-t_4, t_end-t_start))
+print("------ Timings (in secs) ------\nArrange axes:\t\t{:.3g}\nMesh grid:\t\t{:.3g}\nSwap axes:\t\t{:.3g}\nMake list of IDs:\t{:.3g}\nWrite to file:\t\t{:.3g}\nTotal:\t\t\t{:.3g}\n".format(t_1-t_start, t_2-t_1, t_3-t_2, t_4-t_3, t_end-t_4, t_end-t_start))
