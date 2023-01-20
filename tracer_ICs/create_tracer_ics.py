@@ -71,7 +71,7 @@ for i in range(tot_num_tracers):
     file.write(struct.pack('d', positions[i,1]))
     file.write(struct.pack('d', positions[i,2]))
 for i in range(tot_num_tracers):
-    file.write(struct.pack('i', int(IDs[i])))
+    file.write(struct.pack('i', int(IDs[i])))           # IDs are given last so they can be ignored if need be
 file.close()
 
 t_end = time.perf_counter()
