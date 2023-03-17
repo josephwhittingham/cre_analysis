@@ -687,6 +687,7 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_magnetic_obliquity = hf['Header'].attrs['CosmicRaysMagneticObliquityFlag']
 		self.flag_cosmic_ray_sn_injection = hf['Header'].attrs['CosmicRaysSNInjectionFlag']
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
+		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
 
 		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
@@ -696,9 +697,6 @@ class ArepoTracerOutput:
 		self.UnitLength_in_cm = hf['Header'].attrs['UnitLength_in_cm']
 		self.UnitMass_in_g = hf['Header'].attrs['UnitMass_in_g']
 		self.UnitVelocity_in_cm_per_s = hf['Header'].attrs['UnitVelocity_in_cm_per_s']
-
-		if self.flag_comoving_integration_on:
-			self.hubble_param = hf['Header'].attrs['HubbleParam']
 
 		hf.close()
 
@@ -1274,14 +1272,12 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_magnetic_obliquity = flag_cosmic_ray_magnetic_obliquity
 		self.flag_cosmic_ray_sn_injection = flag_cosmic_ray_sn_injection
 		self.flag_comoving_integration_on = flag_comoving_integration_on
+		self.hubble_param = hubble_param
 		self.flag_tracer_pos_every_timestep = flag_tracer_pos_every_timestep
 
 		self.UnitLength_in_cm = UnitLength_in_cm
 		self.UnitMass_in_g = UnitMass_in_g
 		self.UnitVelocity_in_cm_per_s = UnitVelocity_in_cm_per_s
-
-		if self.flag_comoving_integration_on:
-			self.hubble_param = hubble_param
 
 		self.define_variables(new=True)
 		self.initialize_variables()
@@ -1407,15 +1403,13 @@ class ArepoTracerOutput:
 			header.attrs['CosmicRaysMagneticObliquityFlag'] = int(self.flag_cosmic_ray_magnetic_obliquity)
 			header.attrs['CosmicRaysSNInjectionFlag'] = int(self.flag_cosmic_ray_sn_injection)
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
+			header.attrs['HubbleParam'] = self.hubble_param
 			header.attrs['TracerPositionEveryTimestepFlag'] = int(self.flag_tracer_pos_every_timestep)
 			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=int)
 
 			header.attrs['UnitLength_in_cm'] = self.UnitLength_in_cm
 			header.attrs['UnitMass_in_g'] = self.UnitMass_in_g
 			header.attrs['UnitVelocity_in_cm_per_s'] = self.UnitVelocity_in_cm_per_s
-
-			if self.flag_comoving_integration_on:
-			    header.attrs['HubbleParam'] = self.hubble_param
 
 			# Tracer data
 			d1 = group_dat.create_dataset('ParticleIDs', (len_tracer_data,) , dtype=int)
