@@ -346,11 +346,7 @@ class CrestSnapshot:
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
 				
 				# Determine which tracers exist at the current time based on the density value (for 'on the fly' tracer creation)
-				#self.tracer_exists[:] = 1
 				self.tracer_exists = np.where(self.n_gas > 0, 1, 0)
-				#if len(np.where(self.n_gas == 0)[0])>0:
-				#	indices = np.where(self.n_gas == 0)[0]
-				#	self.tracer_exists[indices] = 0
 
 				blocksize_end = int(struct.unpack('I',f.read(size_i))[0])
 				if blocksize_end != blocksize:
