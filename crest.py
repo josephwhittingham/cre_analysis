@@ -231,6 +231,7 @@ class CrestSnapshot:
 
 		   specific_fields (list): List of strings of the variable which should be stored,
 		                           e.g., ['ID', 'time']. Of no list is given, all variables are read.
+		   use_HDF5 (bool): Not related to HDF5! This is to select whether the mass field of the tracer particle in the Crest snapshot is output or not (this field existed in the previous crest version and was used to calculate the tracer volume). True: the mass field is given in the output. False: the mass field is not given in the output.
 		"""
 		self._var_name = None
 		self._var_dtype = None
@@ -316,6 +317,7 @@ class CrestSnapshot:
 				self.u_therm = np.ndarray(self.nPart, dtype=float)
 				self.eps_photon = np.ndarray(self.nPart, dtype=float)
 				self.pos = np.ndarray((self.nPart, 3), dtype=float)
+				self.tracer_exists = np.ndarray(self.nPart, dtype=int)
 
 				if self.version>=201902:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
@@ -342,11 +344,14 @@ class CrestSnapshot:
 
 				for i in np.arange(self.nPart):
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
+				
+				# Determine which tracers exist at the current time based on the density value (for 'on the fly' tracer creation)
+				self.tracer_exists = np.where(self.n_gas > 0, 1, 0)
 
 				blocksize_end = int(struct.unpack('I',f.read(size_i))[0])
 				if blocksize_end != blocksize:
 					sys.exit("3rd data block not correctly enclosed")
-
+ 				
 
 
 ####################################################################################################
