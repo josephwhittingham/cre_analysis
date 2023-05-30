@@ -304,8 +304,8 @@ class CrestSnapshot:
 				else:
 					sys.exit("Version {:d} not supported".format(self.version))
 
-				#if blocksize != datasize:
-				#	sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, datasize))
+				if blocksize != datasize:
+					sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, datasize))
 
 				self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
 				self.id = np.ndarray(self.nPart, dtype=np.uint32)
@@ -352,14 +352,14 @@ class CrestSnapshot:
 
 				for i in np.arange(self.nPart):
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
-				
+
 				# Determine which tracers exist at the current time based on the density value (for 'on the fly' tracer creation)
 				self.tracer_exists = np.where(self.n_gas > 0, 1, 0)
 
 				blocksize_end = int(struct.unpack('I',f.read(size_i))[0])
 				if blocksize_end != blocksize:
 					sys.exit("3rd data block not correctly enclosed")
- 				
+
 
 
 ####################################################################################################
