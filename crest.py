@@ -292,7 +292,9 @@ class CrestSnapshot:
 
 				# Spectrum Data
 				blocksize = int(struct.unpack('I', f.read(size_i))[0])
-				if self.version >= 201903:
+				if self.version >= 202305:
+					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d)
+				elif self.version == 201903:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
 				elif self.version == 201902:
 					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 10 * size_d)
@@ -301,8 +303,8 @@ class CrestSnapshot:
 				else:
 					sys.exit("Version {:d} not supported".format(self.version))
 
-				if blocksize != datasize:
-					sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, datasize))
+				#if blocksize != datasize:
+				#	sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, datasize))
 
 				self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
 				self.id = np.ndarray(self.nPart, dtype=np.uint32)
@@ -319,6 +321,9 @@ class CrestSnapshot:
 
 				if self.version>=201902:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
+
+				if self.version>=202305:
+					self.time_since_injection = np.ndarray(self.nPart, dtype=float)
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				if self.version <= 201902:
@@ -339,6 +344,9 @@ class CrestSnapshot:
 
 				for j in np.arange(3):
 					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
+				if self.version>=202305:
+					self.time_since_injection[:]      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for i in np.arange(self.nPart):
 					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
