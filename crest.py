@@ -1463,9 +1463,9 @@ class ArepoTracerOutput:
 			if self.flag_comoving_integration_on:
 			    d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=double)
 
-			d24 = group_dat.create_dataset('TimestepLastIndex', (self.nSnap,), dtype=int)
+			d24 = group_dat.create_dataset('NextTimestepStartIndex', (self.nSnap,), dtype=int)
 
-			last_index = 0
+			next_timestep_start_index = 0
 
 			for i in range(self.nSnap):
 				d1[i] = self.ID[i].flatten()
@@ -1500,8 +1500,8 @@ class ArepoTracerOutput:
 				if self.flag_comoving_integration_on:
 					d23[i] = self.dtValues[i].flatten()
 
-				last_index += len(self.ID[i])
-				d24[i] = last_index
+				next_timestep_start_index += len(self.ID[i])
+				d24[i] = next_timestep_start_index
 
 			hf.close()
 
