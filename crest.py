@@ -625,6 +625,12 @@ class ArepoTracerOutput:
 				self._var_dtype.append(np.float32)
 				self._var_cgs_factor.append(E)
 
+            if self.flag_cosmic_ray_jet_injection:
+                self._var_name.append(['jet_passive_scalar', 'vel', 'eps_CRp_inj_jet'])
+                self._var_dtype.append([np.float32, np.ndarray, np.float32])
+                self._var_cgs_factor.append([1, V, E/(L/V)])
+
+
 			self._var_name = list(flatten(self._var_name))
 			self._var_dtype = list(flatten(self._var_dtype))
 			self._var_cgs_factor = list(flatten(self._var_cgs_factor))
@@ -699,6 +705,7 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_shock_acceleration = hf['Header'].attrs['CosmicRaysShockAccelerationFlag']
 		self.flag_cosmic_ray_magnetic_obliquity = hf['Header'].attrs['CosmicRaysMagneticObliquityFlag']
 		self.flag_cosmic_ray_sn_injection = hf['Header'].attrs['CosmicRaysSNInjectionFlag']
+        self.flag_cosmic_ray_jet_injection = hf['Header'].attrs['CosmicRaysBHJetInjectionFlag']
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
 		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
@@ -772,6 +779,14 @@ class ArepoTracerOutput:
 			if self.flag_cosmic_ray_sn_injection:
 				self.eps_CRp_inj = hf['TracerData/InjectionEnergy'][()]
 
+            if self.flag_cosmic_ray_jet_injection:
+                self.jet_passive_scalar = hf['TracerData/JetPassiveScalar'][()]
+                vel_x = hf['TracerData/GasVelocity/X'][()]
+                vel_y = hf['TracerData/GasVelocity/Y'][()]
+                vel_z = hf['TracerData/GasVelocity/Z'][()]
+                self.vel = np.array([vel_x.T, vel_y.T, vel_z.T]).T
+                self.eps_CRp_inj_jet = hf['TracerData/CRInjectedEnergy'][()]
+
 			if self.flag_comoving_integration_on:
 				self.dtValues = hf['TracerData/dtValues'][()]
 
@@ -827,6 +842,11 @@ class ArepoTracerOutput:
 				if self.flag_cosmic_ray_sn_injection:
 					self.eps_CRp_inj = self.eps_CRp_inj.reshape(self.nSnap, self.nPart)
 
+                if self.flag_cosmic_ray_jet_injection:
+                    self.jet_passive_scalar = self.jet_passive_scalar.reshape(self.nSnap, self.nPart)
+                    self.vel = self.vel.reshape(self.nSnap, self.nPart, 3)
+                    self.eps_CRp_inj_jet = self.eps_CRp_inj_jet.reshape(self.nSnap, self.nPart)
+
 				if self.flag_comoving_integration_on:
 					self.dtValues = self.dtValues.reshape(self.nSnap)
 
@@ -876,7 +896,8 @@ class ArepoTracerOutput:
 			self.flag_cosmic_ray_shock_acceleration = True
 			self.flag_cosmic_ray_magnetic_obliquity = True
 			self.flag_cosmic_ray_sn_injection = True
-
+            self.flag_cosmic_ray_jet_injection = True
+	
 			# Reading first block with unit system
 			self._traceroutput_headersize = int(struct.unpack('i', f.read(size_i))[0])
 			if self._traceroutput_headersize == 3 * size_d:
@@ -912,6 +933,7 @@ class ArepoTracerOutput:
 				self.flag_cosmic_ray_shock_acceleration = bool(struct.unpack('i', f.read(size_i))[0])
 				self.flag_cosmic_ray_magnetic_obliquity = bool(struct.unpack('i', f.read(size_i))[0])
 				self.flag_cosmic_ray_sn_injection = bool(struct.unpack('i', f.read(size_i))[0])
+                self.flag_cosmic_ray_jet_injection = bool(struct.unpack('i', f.read(size_i))[0])
 				self.TracerMass = np.ndarray(self.nPart, dtype=np.float32)
 				self.TracerMass[:] = struct.unpack('{:d}f'.format(self.nPart), f.read(size_f * self.nPart))[:]
 				self.ID = np.ndarray(self.nPart, dtype=np.uint32)
@@ -1251,7 +1273,8 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
-						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True, hubble_param = 1):
+						flag_cosmic_ray_sn_injection = False, flag_cosmic_ray_jet_injection = True,
+			            flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True, hubble_param = 1):
 		""" Create new empty tracer data
 
 		Args:
@@ -1270,6 +1293,8 @@ class ArepoTracerOutput:
 		   flag_cosmic_ray_magnetic_obliquity (bool) : default False
 
 		   flag_cosmic_ray_sn_injection (bool) : default False
+	
+           flag_cosmic_ray_jet_injection (bool) : default False
 
 		   flag_comoving_integration_on (bool) : default False
 
@@ -1284,6 +1309,7 @@ class ArepoTracerOutput:
 		self.flag_cosmic_ray_shock_acceleration = flag_cosmic_ray_shock_acceleration
 		self.flag_cosmic_ray_magnetic_obliquity = flag_cosmic_ray_magnetic_obliquity
 		self.flag_cosmic_ray_sn_injection = flag_cosmic_ray_sn_injection
+        self.flag_cosmic_ray_jet_injection = flag_cosmic_ray_jet_injection
 		self.flag_comoving_integration_on = flag_comoving_integration_on
 		self.hubble_param = hubble_param
 		self.flag_tracer_pos_every_timestep = flag_tracer_pos_every_timestep
@@ -1323,7 +1349,7 @@ class ArepoTracerOutput:
 		ret.flag_cosmic_ray_shock_acceleration = self.flag_cosmic_ray_shock_acceleration
 		ret.flag_cosmic_ray_magnetic_obliquity = self.flag_cosmic_ray_magnetic_obliquity
 		ret.flag_cosmic_ray_sn_injection = self.flag_cosmic_ray_sn_injection
-
+        ret.flag_cosmic_ray_jet_injection = self.flag_cosmic_ray_jet_injection
 
 		ret._var_name = self._var_name
 		ret._var_dtype = self._var_dtype
@@ -1403,6 +1429,9 @@ class ArepoTracerOutput:
 			if self.flag_cosmic_ray_shock_acceleration:
 				group_shock = group_dat.create_group('ShockDirection')
 
+            if self.flag_cosmic_ray_jet_injection:
+                group_vel = group_dat.create_group('GasVelocity')
+    
 			# Datatypes
 			int = np.int32
 			float = np.float32
@@ -1415,6 +1444,7 @@ class ArepoTracerOutput:
 			header.attrs['CosmicRaysShockAccelerationFlag'] = int(self.flag_cosmic_ray_shock_acceleration)
 			header.attrs['CosmicRaysMagneticObliquityFlag'] = int(self.flag_cosmic_ray_magnetic_obliquity)
 			header.attrs['CosmicRaysSNInjectionFlag'] = int(self.flag_cosmic_ray_sn_injection)
+            header.attrs['CosmicRaysBHJetInjectionFlag'] = int(self.flag_cosmic_ray_jet_injection)
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
 			header.attrs['HubbleParam'] = self.hubble_param
 			header.attrs['TracerPositionEveryTimestepFlag'] = int(self.flag_tracer_pos_every_timestep)
@@ -1458,12 +1488,19 @@ class ArepoTracerOutput:
 			if self.flag_cosmic_ray_sn_injection:
 			    d21 = group_dat.create_dataset('InjectionEnergy', (len_tracer_data,) , dtype=float)
 
-			d22 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=double)
+            if self.flag_cosmic_ray_jet_injection:
+                d22 = group_dat.create_dataset('JetPassiveScalar', (len_tracer_data,) , dtype=float)
+                d23 = group_vel.create_dataset('X', (len_tracer_data,) , dtype=float)
+                d24 = group_vel.create_dataset('Y', (len_tracer_data,) , dtype=float)
+                d25 = group_vel.create_dataset('Z', (len_tracer_data,) , dtype=float)
+                d26 = group_dat.create_dataset('CRInjectedEnergy', (len_tracer_data,) , dtype=float)
+
+			d27 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=double)
 
 			if self.flag_comoving_integration_on:
-			    d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=double)
+			    d28 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=double)
 
-			d24 = group_dat.create_dataset('NextTimestepStartIndex', (self.nSnap,), dtype=int)
+			d29 = group_dat.create_dataset('NextTimestepStartIndex', (self.nSnap,), dtype=int)
 
 			next_timestep_start_index = 0
 
@@ -1495,13 +1532,20 @@ class ArepoTracerOutput:
 				if self.flag_cosmic_ray_sn_injection:
 					d21[i] = self.eps_CRp_inj[i].flatten()
 
-				d22[i] = self.time[i].flatten()
+                if self.flag_cosmic_ray_jet_injection:
+                    d22[i] = self.jet_passive_scalar[i].flatten()
+                    d23[i] = self.vel[i,:,0].flatten()
+                    d24[i] = self.vel[i,:,1].flatten()
+                    d25[i] = self.vel[i,:,2].flatten()
+                    d26[i] = self.eps_CRp_inj_jet[i].flatten()
+                                       
+				d27[i] = self.time[i].flatten()
 
 				if self.flag_comoving_integration_on:
-					d23[i] = self.dtValues[i].flatten()
+					d28[i] = self.dtValues[i].flatten()
 
 				next_timestep_start_index += len(self.ID[i])
-				d24[i] = next_timestep_start_index
+				d29[i] = next_timestep_start_index
 
 			hf.close()
 
@@ -1531,6 +1575,7 @@ class ArepoTracerOutput:
 				f.write(struct.pack('i', int(self.flag_cosmic_ray_shock_acceleration)))
 				f.write(struct.pack('i', int(self.flag_cosmic_ray_magnetic_obliquity)))
 				f.write(struct.pack('i', int(self.flag_cosmic_ray_sn_injection)))
+                f.write(struct.pack('i', int(self.flag_cosmic_ray_jet_injection)))
 				f.write(struct.pack('{:d}f'.format(self.nPart), *self.TracerMass.astype(np.float)[:]))
 				f.write(struct.pack('{:d}I'.format(self.nPart), *self.ID.astype(np.uint32)[:]))
 				f.write(struct.pack('i', self._traceroutput_tracersize))
