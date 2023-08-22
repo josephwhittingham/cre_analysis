@@ -709,6 +709,7 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
 		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
+		self.flag_photon_energy_density = hf['Header'].attrs['PhotonEnergyDensityFlag']
 
 		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
 
@@ -1273,8 +1274,13 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
+<<<<<<< HEAD
 						flag_cosmic_ray_sn_injection = False, flag_cosmic_ray_jet_injection = True,
 			            flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True, hubble_param = 1):
+=======
+						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True,
+						flag_photon_energy_density = False, hubble_param = 1):
+>>>>>>> origin/master
 		""" Create new empty tracer data
 
 		Args:
@@ -1298,6 +1304,10 @@ class ArepoTracerOutput:
 
 		   flag_comoving_integration_on (bool) : default False
 
+		   flag_tracer_pos_every_timestep (bool) : default True
+		   
+		   flag_photon_energy_density (bool) : default False
+
 		"""
 
 		size_i, size_I, size_f, size_d = check_encoding()
@@ -1313,6 +1323,7 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = flag_comoving_integration_on
 		self.hubble_param = hubble_param
 		self.flag_tracer_pos_every_timestep = flag_tracer_pos_every_timestep
+		self.flag_photon_energy_density = flag_photon_energy_density
 
 		self.UnitLength_in_cm = UnitLength_in_cm
 		self.UnitMass_in_g = UnitMass_in_g
@@ -1448,6 +1459,7 @@ class ArepoTracerOutput:
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
 			header.attrs['HubbleParam'] = self.hubble_param
 			header.attrs['TracerPositionEveryTimestepFlag'] = int(self.flag_tracer_pos_every_timestep)
+			header.attrs['PhotonEnergyDensityFlag'] = int(self.flag_photon_energy_density)
 			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=int)
 
 			header.attrs['UnitLength_in_cm'] = self.UnitLength_in_cm
