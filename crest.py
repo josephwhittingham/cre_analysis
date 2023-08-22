@@ -423,12 +423,13 @@ class ArepoTracerOutput:
 		   specific_fields (list): List of strings of the variable which should be stored,
 		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
 		      Possible variables names are:
-		       - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm', 'eps_photon']
+		       - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm']
 		       - shock acceleration: ['ShockFlag', 'eps_CRp_acc',
 		                              'n_gasPreShock', 'n_gasPostShock',
 		                              'VShock', 'timeShockCross', 'ShockDir']
 		       - magnetic obliquity: ['theta']
 		       - SN injection: ['eps_CRp_inj']
+		       - output photon energy density: ['eps_photon']
 		      Please note that some variable blocks are only available if the code was compiled
 		      and run with these configurations.
 
@@ -702,7 +703,8 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
 		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
-		self.flag_photon_energy_density = hf['Header'].attrs['PhotonEnergyDensityFlag']
+		# if the flag does not exist, set it to True - previously eps_ph was always written
+		self.flag_photon_energy_density = hf['Header'].attrs.get('PhotonEnergyDensityFlag', True)
 
 		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
 
@@ -753,7 +755,9 @@ class ArepoTracerOutput:
 			self.B = np.array([mag_x.T, mag_y.T, mag_z.T]).T
 			self.n_gas = hf['TracerData/Density'][()]
 			self.u_therm = hf['TracerData/InternalEnergy'][()]
-			self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
+			
+			if self.flag_photon_energy_density:
+				self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
 
 			if self.flag_cosmic_ray_shock_acceleration:
 				self.ShockFlag = hf['TracerData/ShockFlag'][()]
@@ -790,7 +794,9 @@ class ArepoTracerOutput:
 				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
 				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
 				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
-				self.eps_photon = self.eps_photon.reshape(self.nSnap, self.nPart)
+
+				if self.flag_photon_energy_density:
+					self.eps_photon = self.eps_photon.reshape(self.nSnap, self.nPart)
 
 				if self.flag_cosmic_ray_shock_acceleration:
 					self.ShockFlag = self.ShockFlag.reshape(self.nSnap, self.nPart)
@@ -1445,7 +1451,9 @@ class ArepoTracerOutput:
 
 			d8 = group_dat.create_dataset('Density', (len_tracer_data,) , dtype=float)
 			d9 = group_dat.create_dataset('InternalEnergy', (len_tracer_data,) , dtype=float)
-			d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data,) , dtype=float)
+
+			if self.flag_photon_energy_density:
+				d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data,) , dtype=float)
 
 			if self.flag_cosmic_ray_shock_acceleration:
 			    d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data,) , dtype=int)
@@ -1485,7 +1493,9 @@ class ArepoTracerOutput:
 				d7[i] = self.B[i,:,2].flatten()
 				d8[i] = self.n_gas[i].flatten()
 				d9[i] = self.u_therm[i].flatten()
-				d10[i] = self.eps_photon[i].flatten()
+
+				if self.flag_photon_energy_density:
+					d10[i] = self.eps_photon[i].flatten()
 
 				if self.flag_cosmic_ray_shock_acceleration:
 					d11[i] = self.ShockFlag[i].flatten()
