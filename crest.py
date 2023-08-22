@@ -1274,13 +1274,8 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
-<<<<<<< HEAD
-						flag_cosmic_ray_sn_injection = False, flag_cosmic_ray_jet_injection = True,
-			            flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True, hubble_param = 1):
-=======
 						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True,
 						flag_photon_energy_density = False, hubble_param = 1):
->>>>>>> origin/master
 		""" Create new empty tracer data
 
 		Args:
