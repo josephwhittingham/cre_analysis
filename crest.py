@@ -834,13 +834,13 @@ class ArepoTracerOutput:
 						if len(subarray) == 0:
 							continue
 
+						sorted = np.argsort(current_tracers)
 						indices = np.where(np.isin(self.ID, current_tracers))[0]
 
-
 						if is_3d:
-							output_array[i, indices, :] = subarray
+							output_array[i, indices, :] = subarray[sorted]
 						else:
-							output_array[i, indices] = subarray
+							output_array[i, indices] = subarray[sorted]
 
 					return output_array
 
