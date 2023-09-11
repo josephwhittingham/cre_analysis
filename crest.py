@@ -399,7 +399,10 @@ class ArepoTracerOutput:
 
 
 	# instance variables
-	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False, verbose = False, read_only_ic= False, specific_particles=None, first_snap=None, last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True, reshape_output=True):
+	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False,
+	      verbose = False, read_only_ic= False, specific_particles=None, first_snap=None,
+		  last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True,
+		  reshape_output=True, tracer_creation=False):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
@@ -423,12 +426,13 @@ class ArepoTracerOutput:
 		   specific_fields (list): List of strings of the variable which should be stored,
 		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
 		      Possible variables names are:
-		       - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm', 'eps_photon']
+		       - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm']
 		       - shock acceleration: ['ShockFlag', 'eps_CRp_acc',
 		                              'n_gasPreShock', 'n_gasPostShock',
 		                              'VShock', 'timeShockCross', 'ShockDir']
 		       - magnetic obliquity: ['theta']
 		       - SN injection: ['eps_CRp_inj']
+		       - output photon energy density: ['eps_photon']
 		      Please note that some variable blocks are only available if the code was compiled
 		      and run with these configurations.
 
@@ -454,6 +458,10 @@ class ArepoTracerOutput:
 		self._traceroutput_tracersize = None
 		self._traceroutput_headersize = None
 		self._use_hdf5 = use_HDF5			# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
+		self.tracer_creation = tracer_creation
+		
+		if self.tracer_creation:
+			self.tracer_exists = np.zeros((self.nSnap, self.nPart), dtype=bool)
 
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
@@ -709,7 +717,8 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
 		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
-		self.flag_photon_energy_density = hf['Header'].attrs['PhotonEnergyDensityFlag']
+		# if the flag does not exist, set it to True - previously eps_ph was always written
+		self.flag_photon_energy_density = hf['Header'].attrs.get('PhotonEnergyDensityFlag', True)
 
 		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
 
@@ -725,7 +734,6 @@ class ArepoTracerOutput:
 
 		if verbose:
 			print("Header was read successfully")
-
 
 	def read_data_hdf5(self, file_base, reshape_output, file_numbers=None, cgs_units = False, verbose = False):
 
@@ -749,7 +757,8 @@ class ArepoTracerOutput:
 			hf = h5py.File(file_name, 'r')
 
 			self.time = hf['TracerData/Time'][()]
-			self.ID = hf['TracerData/ParticleIDs'][()]
+			self.ID_all_times = hf['TracerData/ParticleIDs'][()]
+			self.ID = np.sort(np.unique(self.ID_all_times)) # IDs of all tracers in the simulation
 			pos_x = hf['TracerData/Coordinates/X'][()]
 			pos_y = hf['TracerData/Coordinates/Y'][()]
 			pos_z = hf['TracerData/Coordinates/Z'][()]
@@ -760,7 +769,13 @@ class ArepoTracerOutput:
 			self.B = np.array([mag_x.T, mag_y.T, mag_z.T]).T
 			self.n_gas = hf['TracerData/Density'][()]
 			self.u_therm = hf['TracerData/InternalEnergy'][()]
-			self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
+			self.next_timestep_start_index = hf['TracerData']['NextTimestepStartIndex'][()]
+			# insert 0th index for indices_i
+			self.indices_i = np.insert(self.next_timestep_start_index, 0, 0)
+			self.indices_f = self.next_timestep_start_index
+
+			if self.flag_photon_energy_density:
+				self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
 
 			if self.flag_cosmic_ray_shock_acceleration:
 				self.ShockFlag = hf['TracerData/ShockFlag'][()]
@@ -796,19 +811,51 @@ class ArepoTracerOutput:
 
 			hf.close()
 
+
 			if(reshape_output):
 				print("CRE_ANALYSIS: reshape_output=True")
 				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
 
-				self.ID = self.ID.reshape(self.nSnap, self.nPart)
-				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
-				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
-				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
-				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
-				self.eps_photon = self.eps_photon.reshape(self.nSnap, self.nPart)
 
+				# reshape the data so that it has the shape (nSnap, nPart)
+				def reshape_arrays(array, is_3d=False):
+					snap_arrays = [array[start:end, :] if is_3d else array[start:end] for start, end in zip(self.indices_i, self.indices_f)]
+					IDs_current_tracers = [self.ID_all_times[start:end] for start, end in zip(self.indices_i, self.indices_f)]
+
+					if is_3d:
+						output_shape = (len(snap_arrays), self.nPart, 3)
+					else:
+						output_shape = (len(snap_arrays), self.nPart)
+
+
+					output_array = np.full(output_shape, np.nan)
+
+					for i, (subarray, current_tracers) in enumerate(zip(snap_arrays, IDs_current_tracers)):
+						if len(subarray) == 0:
+							continue
+
+						indices = np.where(np.isin(self.ID, current_tracers))[0]
+
+
+						if is_3d:
+							output_array[i, indices, :] = subarray
+						else:
+							output_array[i, indices] = subarray
+
+					return output_array
+
+				# self.ID_all_times = reshape_arrays(self.ID_all_times)
+				self.pos = reshape_arrays(self.pos, is_3d=True)
+				self.B = reshape_arrays(self.B, is_3d=True)
+				self.n_gas = reshape_arrays(self.n_gas)
+				self.u_therm = reshape_arrays(self.u_therm)
+
+				if self.flag_photon_energy_density:
+					self.eps_photon = reshape_arrays(self.eps_photon)
+					
 				if self.flag_cosmic_ray_shock_acceleration:
-					self.ShockFlag = self.ShockFlag.reshape(self.nSnap, self.nPart)
+				# LJ: TODO: check with Joe how to do this
+					self.ShockFlag = reshape_arrays(self.ShockFlag)
 
 					zeros = np.zeros([self.nSnap, self.nPart, 3])
 					zeros[np.where(self.ShockFlag > 1)] = self.ShockDir
@@ -830,26 +877,25 @@ class ArepoTracerOutput:
 						zeros[np.where(self.ShockFlag > 1)] = self.theta
 						self.timeShockCross = zeros
 
-					self.ShockDir = self.ShockDir.reshape(self.nSnap, self.nPart, 3)
-					self.eps_CRp_acc = self.eps_CRp_acc.reshape(self.nSnap, self.nPart)
-					self.n_gasPreShock = self.n_gasPreShock.reshape(self.nSnap, self.nPart)
-					self.n_gasPostShock = self.n_gasPostShock.reshape(self.nSnap, self.nPart)
-					self.VShock = self.VShock.reshape(self.nSnap, self.nPart)
-					self.timeShockCross = self.timeShockCross.reshape(self.nSnap, self.nPart)
-
-					if self.flag_cosmic_ray_sn_injection:
-						self.theta = self.theta.reshape(self.nSnap, self.nPart)
+					# self.ShockDir = reshape_arrays(self.ShockDir, is_3d=True)
+					# self.eps_CRp_acc = reshape_arrays(self.eps_CRp_acc)
+					# self.n_gasPreShock = reshape_arrays(self.n_gasPreShock)
+					# self.n_gasPostShock = reshape_arrays(self.n_gasPostShock)
+					# self.VShock = reshape_arrays(self.VShock)
+					# self.timeShockCross = reshape_arrays(self.timeShockCross)
 
 				if self.flag_cosmic_ray_sn_injection:
-					self.eps_CRp_inj = self.eps_CRp_inj.reshape(self.nSnap, self.nPart)
+					self.eps_CRp_inj = reshape_arrays(self.eps_CRp_inj)
+					self.theta = reshape_arrays(self.theta)
+
 					
 				if self.flag_cosmic_ray_jet_injection:
-					self.jet_passive_scalar = self.jet_passive_scalar.reshape(self.nSnap, self.nPart)
-					self.vel = self.vel.reshape(self.nSnap, self.nPart, 3)
-					self.eps_CRp_inj_jet = self.eps_CRp_inj_jet.reshape(self.nSnap, self.nPart)
+					self.jet_passive_scalar = reshape_arrays(self.jet_passive_scalar)
+					self.vel = reshape_arrays(self.vel, is_3d=True)
+					self.eps_CRp_inj_jet = reshape_arrays(self.eps_CRp_inj_jet)
 
 				if self.flag_comoving_integration_on:
-					self.dtValues = self.dtValues.reshape(self.nSnap)
+					self.dtValues = reshape_arrays(self.dtValues)	
 
 		if verbose:
 			print("Data was read successfully")
@@ -1475,7 +1521,9 @@ class ArepoTracerOutput:
 
 			d8 = group_dat.create_dataset('Density', (len_tracer_data,) , dtype=float)
 			d9 = group_dat.create_dataset('InternalEnergy', (len_tracer_data,) , dtype=float)
-			d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data,) , dtype=float)
+
+			if self.flag_photon_energy_density:
+				d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data,) , dtype=float)
 
 			if self.flag_cosmic_ray_shock_acceleration:
 			    d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data,) , dtype=int)
@@ -1522,7 +1570,9 @@ class ArepoTracerOutput:
 				d7[i] = self.B[i,:,2].flatten()
 				d8[i] = self.n_gas[i].flatten()
 				d9[i] = self.u_therm[i].flatten()
-				d10[i] = self.eps_photon[i].flatten()
+
+				if self.flag_photon_energy_density:
+					d10[i] = self.eps_photon[i].flatten()
 
 				if self.flag_cosmic_ray_shock_acceleration:
 					d11[i] = self.ShockFlag[i].flatten()
