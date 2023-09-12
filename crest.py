@@ -399,7 +399,7 @@ class ArepoTracerOutput:
 
 
 	# instance variables
-	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False,
+	def __init__(self, file_base = None, file_numbers=None, version=None, units = False,
 	      verbose = False, read_only_ic= False, specific_particles=None, first_snap=None,
 		  last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True,
 		  reshape_output=True, tracer_creation=False):
@@ -415,7 +415,7 @@ class ArepoTracerOutput:
 		   file_numbers (int or list): File numbers of data files to be read (version >= 2020-01)
 		       Default: None (No data files to be read)
 
-		   cgs_units (bool): Flag if the values should be converted to cgs units immediately
+		   units (bool): Flag if the values should be converted to cgs units immediately
 
 		   read_only_ic (bool): Read only header and 0th snapshot/initial conditions
 
@@ -466,12 +466,12 @@ class ArepoTracerOutput:
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
-			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
+			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, units=units, verbose=verbose)
 
 		elif file_base is not None:
 			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
 
-			self.read_data(file_base, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic,
+			self.read_data(file_base, file_numbers=file_numbers, units=units, verbose=verbose, read_only_ic=read_only_ic,
 						   specific_particles=specific_particles, first_snap=first_snap, last_snap=last_snap, specific_fields=specific_fields)
 
 	@property
@@ -504,6 +504,7 @@ class ArepoTracerOutput:
 		return self._var_cgs_factors
 
 	def define_variables(self, new=False):
+		import astropy.units as u
 		""" Define names, types, and unit conversion factor
 
 		Args:
@@ -531,9 +532,9 @@ class ArepoTracerOutput:
 					sys.exit("error")
 			return np.sum(np.array([typesize(type_str) for type_str in type_arr]))
 
-		L = self.UnitLength_in_cm
-		M = self.UnitMass_in_g
-		V = self.UnitVelocity_in_cm_per_s
+		L = self.UnitLength_in_cm * u.cm
+		M = self.UnitMass_in_g * u.g
+		V = self.UnitVelocity_in_cm_per_s * u.cm / u.s
 
 		# cgs scaling of variables
 		B = np.sqrt(M * V**2 / L**3) # B scaling
@@ -735,7 +736,7 @@ class ArepoTracerOutput:
 		if verbose:
 			print("Header was read successfully")
 
-	def read_data_hdf5(self, file_base, reshape_output, file_numbers=None, cgs_units = False, verbose = False):
+	def read_data_hdf5(self, file_base, reshape_output, file_numbers=None, units = False, verbose = False):
 
 		self.initialize_variables()
 
@@ -833,7 +834,6 @@ class ArepoTracerOutput:
 					for i, (subarray, current_tracers) in enumerate(zip(snap_arrays, IDs_current_tracers)):
 						if len(subarray) == 0:
 							continue
-
 						sorted = np.argsort(current_tracers)
 						indices = np.where(np.isin(self.ID, current_tracers))[0]
 
@@ -900,8 +900,8 @@ class ArepoTracerOutput:
 		if verbose:
 			print("Data was read successfully")
 
-		if cgs_units:
-			self.scale_to_cgs_units(verbose)
+		if units:
+			self.scale_to_units(verbose)
 
 
 	def read_header(self, file_base, verbose = False, splitted_files=True):
@@ -997,7 +997,7 @@ class ArepoTracerOutput:
 			if verbose:
 				print("Header was successfully read")
 
-	def read_data(self, file_base, file_numbers=None, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, first_snap = None, last_snap = None, specific_fields=None):
+	def read_data(self, file_base, file_numbers=None, units = False, verbose = False, read_only_ic = False, specific_particles = None, first_snap = None, last_snap = None, specific_fields=None):
 		""" Read in the header data from file. This function is automatically called if class constructor is called with the file name"""
 
 		if self.version <= 201903:
@@ -1287,11 +1287,11 @@ class ArepoTracerOutput:
 		if verbose:
 			print("Data was successfully read")
 
-		if cgs_units:
-			self.scale_to_cgs_units(verbose)
+		if units:
+			self.scale_to_units(verbose)
 
 
-	def scale_to_cgs_units(self, verbose=False):
+	def scale_to_units(self, verbose=False):
 		if not self.All_Units_in_cgs:
 			if verbose:
 				print("Scale to cgs with UnitLength_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
