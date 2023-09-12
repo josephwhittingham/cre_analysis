@@ -402,7 +402,7 @@ class ArepoTracerOutput:
 	def __init__(self, file_base = None, file_numbers=None, version=None, units = False,
 	      verbose = False, read_only_ic= False, specific_particles=None, first_snap=None,
 		  last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True,
-		  reshape_output=True, tracer_creation=False):
+		  reshape_output=True):
 		"""
 		Initialize an instance of ArepoTracerOutput.
 
@@ -458,11 +458,7 @@ class ArepoTracerOutput:
 		self._traceroutput_tracersize = None
 		self._traceroutput_headersize = None
 		self._use_hdf5 = use_HDF5			# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
-		self.tracer_creation = tracer_creation
 		
-		if self.tracer_creation:
-			self.tracer_exists = np.zeros((self.nSnap, self.nPart), dtype=bool)
-
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
@@ -502,7 +498,7 @@ class ArepoTracerOutput:
 	def var_cgs_factor(self):
 		""" List of cgs conversion factors """
 		return self._var_cgs_factors
-
+	
 	def define_variables(self, new=False):
 		import astropy.units as u
 		""" Define names, types, and unit conversion factor
@@ -532,9 +528,9 @@ class ArepoTracerOutput:
 					sys.exit("error")
 			return np.sum(np.array([typesize(type_str) for type_str in type_arr]))
 
-		L = self.UnitLength_in_cm * u.cm
-		M = self.UnitMass_in_g * u.g
-		V = self.UnitVelocity_in_cm_per_s * u.cm / u.s
+		L = self.UnitLength_in_cm
+		M = self.UnitMass_in_g
+		V = self.UnitVelocity_in_cm_per_s
 
 		# cgs scaling of variables
 		B = np.sqrt(M * V**2 / L**3) # B scaling
@@ -545,6 +541,7 @@ class ArepoTracerOutput:
 		# names of all possible variables
 		# for better readability: new line after 5 elements
 		# the order of the variables has to be same as in the file
+
 
 
 		if self._version == 201901:
@@ -721,7 +718,7 @@ class ArepoTracerOutput:
 		# if the flag does not exist, set it to True - previously eps_ph was always written
 		self.flag_photon_energy_density = hf['Header'].attrs.get('PhotonEnergyDensityFlag', True)
 
-		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
+		self.AllIDs = np.sort(hf['Header/AllTracerParticleIDs'][()])
 
 		self.nPart = self.AllIDs.shape[0]
 
@@ -759,7 +756,6 @@ class ArepoTracerOutput:
 
 			self.time = hf['TracerData/Time'][()]
 			self.ID_all_times = hf['TracerData/ParticleIDs'][()]
-			self.ID = np.sort(np.unique(self.ID_all_times)) # IDs of all tracers in the simulation
 			pos_x = hf['TracerData/Coordinates/X'][()]
 			pos_y = hf['TracerData/Coordinates/Y'][()]
 			pos_z = hf['TracerData/Coordinates/Z'][()]
@@ -835,7 +831,7 @@ class ArepoTracerOutput:
 						if len(subarray) == 0:
 							continue
 						sorted = np.argsort(current_tracers)
-						indices = np.where(np.isin(self.ID, current_tracers))[0]
+						indices = np.where(np.isin(self.AllIDs, current_tracers))[0]
 
 						if is_3d:
 							output_array[i, indices, :] = subarray[sorted]
