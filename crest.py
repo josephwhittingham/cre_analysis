@@ -1506,7 +1506,6 @@ class ArepoTracerOutput:
 
 			# Tracer data
 			d1 = group_dat.create_dataset('ParticleIDs', (len_tracer_data,) , dtype=int)
-
 			d2 = group_pos.create_dataset('X', (len_tracer_data,) , dtype=float)
 			d3 = group_pos.create_dataset('Y', (len_tracer_data,) , dtype=float)
 			d4 = group_pos.create_dataset('Z', (len_tracer_data,) , dtype=float)
@@ -1556,47 +1555,48 @@ class ArepoTracerOutput:
 
 			next_timestep_start_index = 0
 
-			for i in range(self.nSnap):
-				d1[i] = self.ID[i].flatten()
-				d2[i] = self.pos[i,:,0].flatten()
-				d3[i] = self.pos[i,:,1].flatten()
-				d4[i] = self.pos[i,:,2].flatten()
-				d5[i] = self.B[i,:,0].flatten()
-				d6[i] = self.B[i,:,1].flatten()
-				d7[i] = self.B[i,:,2].flatten()
-				d8[i] = self.n_gas[i].flatten()
-				d9[i] = self.u_therm[i].flatten()
+			for i in range(self.nSnap * self.nPart):
+				d1[i] = self.ID.flatten()[i]
+				d2[i] = self.pos[:,:,0].flatten()[i]
+				d3[i] = self.pos[:,:,1].flatten()[i]
+				d4[i] = self.pos[:,:,2].flatten()[i]
+				d5[i] = self.B[:,:,0].flatten()[i]
+				d6[i] = self.B[:,:,1].flatten()[i]
+				d7[i] = self.B[:,:,2].flatten()[i]
+				d8[i] = self.n_gas.flatten()[i]
+				d9[i] = self.u_therm.flatten()[i]
 
 				if self.flag_photon_energy_density:
-					d10[i] = self.eps_photon[i].flatten()
+					d10[i] = self.eps_photon.flatten()[i]
 
 				if self.flag_cosmic_ray_shock_acceleration:
-					d11[i] = self.ShockFlag[i].flatten()
-					d12[i] = self.ShockDir[i,:,0].flatten()
-					d13[i] = self.ShockDir[i,:,1].flatten()
-					d14[i] = self.ShockDir[i,:,2].flatten()
-					d15[i] = self.eps_CRp_acc[i].flatten()
-					d16[i] = self.n_gasPreShock[i].flatten()
-					d17[i] = self.n_gasPostShock[i].flatten()
-					d18[i] = self.VShock[i].flatten()
-					d19[i] = self.timeShockCross[i].flatten()
+					d11[i] = self.ShockFlag.flatten()[i]
+					d12[i] = self.ShockDir[:,:,0].flatten()[i]
+					d13[i] = self.ShockDir[:,:,1].flatten()[i]
+					d14[i] = self.ShockDir[:,:,2].flatten()[i]
+					d15[i] = self.eps_CRp_acc.flatten()[i]
+					d16[i] = self.n_gasPreShock.flatten()[i]
+					d17[i] = self.n_gasPostShock.flatten()[i]
+					d18[i] = self.VShock.flatten()[i]
+					d19[i] = self.timeShockCross.flatten()[i]
 					if self.flag_cosmic_ray_magnetic_obliquity:
-						d20[i] = self.theta[i].flatten()
+						d20[i] = self.theta.flatten()[i]
 
 				if self.flag_cosmic_ray_sn_injection:
-					d21[i] = self.eps_CRp_inj[i].flatten()
-
+					d21[i] = self.eps_CRp_inj.flatten()[i]
+				
 				if self.flag_cosmic_ray_jet_injection:
-					d22[i] = self.jet_passive_scalar[i].flatten()
-					d23[i] = self.vel[i,:,0].flatten()
-					d24[i] = self.vel[i,:,1].flatten()
-					d25[i] = self.vel[i,:,2].flatten()
-					d26[i] = self.eps_CRp_inj_jet[i].flatten()
-                                       
-				d27[i] = self.time[i].flatten()
+					d22[i] = self.jet_passive_scalar.flatten()[i]
+					d23[i] = self.vel[:,:,0].flatten()[i]
+					d24[i] = self.vel[:,:,1].flatten()[i]
+					d25[i] = self.vel[:,:,2].flatten()[i]
+					d26[i] = self.eps_CRp_inj_jet.flatten()[i]
+
+			for i in range(self.nSnap):
+				d27[i] = self.time.flatten()[i]
 
 				if self.flag_comoving_integration_on:
-					d28[i] = self.dtValues[i].flatten()
+					d28[i] = self.dtValues.flatten()[i]
 
 				next_timestep_start_index += len(self.ID[i])
 				d29[i] = next_timestep_start_index
