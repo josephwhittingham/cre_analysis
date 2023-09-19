@@ -1339,7 +1339,6 @@ class ArepoTracerOutput:
 
 
 		ret._var_name = self._var_name
-		print(f'shape is {ret._var_name.shape}')
 		ret._var_dtype = self._var_dtype
 		ret._var_cgs_factor = self._var_cgs_factor
 		ret._var_store = self._var_store
@@ -1423,7 +1422,6 @@ class ArepoTracerOutput:
 			double =np.float64
 
 			len_tracer_data = self.nSnap * self.nPart
-			# print(f'len tracer data = {len_tracer_data}')
 
 			# Header info
 			header.attrs['TracerOutputVersion'] = self._version
