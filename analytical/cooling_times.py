@@ -1,4 +1,4 @@
-y"""
+"""
 This script plots the cooling timescales for electrons
 against momentum, Lorentz factor and kinetic energy.
 One can change physical quantities to see the effect on the cooling times.
@@ -8,17 +8,19 @@ It uses the constants and functions defined in Physics.py
 September 2023, Léna Jlassi
 """
 import sys
-cre_analysis_path = '/home/lena/code/crest/cre_analysis/'
+import os
+cre_analysis_path = '../'
 sys.path.append(cre_analysis_path)
 import numpy as np
-from matplotlib.colors import LogNorm
-import astropy
 import matplotlib.pyplot as plt
 from crest import *
 from Physics import *
 from logutils import *
 
-output_path = '/home/lena/analysis/figures/figures_crest/theory/'
+output_path = './figures/'
+
+if not os.path.isdir(output_path):
+    os.mkdir(output_path)
 
 # Define physical quantities that affect the cooling
 n_e = 1.e-4 # cm-3
