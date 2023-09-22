@@ -1,3 +1,12 @@
+y"""
+This script plots the cooling timescales for electrons
+against momentum, Lorentz factor and kinetic energy.
+One can change physical quantities to see the effect on the cooling times.
+
+It uses the constants and functions defined in Physics.py
+
+September 2023, Léna Jlassi
+"""
 import sys
 cre_analysis_path = '/home/lena/code/crest/cre_analysis/'
 sys.path.append(cre_analysis_path)
@@ -11,44 +20,52 @@ from logutils import *
 
 output_path = '/home/lena/analysis/figures/figures_crest/theory/'
 
+# Define physical quantities that affect the cooling
+n_e = 1.e-4 # cm-3
+B_cmb = CMB_MAGNETIC_FIELD # Gauss
+B = 1.e-6 # Gauss
+B_microG = B * 1.e6 # microGauss
+
+
+# Define momentum bins and convert to useful quantities
 p = np.logspace(-4, 8, num=121)
+
 gamma = gamma_factor(p)
 
 E_erg = p * ELECTRONMASS * CLIGHT**2 # erg 
-# E_erg = gamma * ELECTRONMASS * CLIGHT**2
+
 E_eV = E_erg / ELECTRONVOLT_IN_ERGS  # eV
 
 v = CLIGHT * beta_factor(p)
-# v = CLIGHT * np.sqrt(1 - (1./gamma**2)) # cm/s
-
-seconds_in_yr = 60.*60.*24.*365.25
-seconds_in_Myr = 60.*60.*24.*365.25*1.e6
-seconds_in_Gyr = 60.*60.*24.*365.25*1.e9
-
-
-# kT = 1.e4 # keV
-# n_e = 1.e-3 # cm-3
-n_e = 15.e-2 # cm-3
-# n_gas = n_e / (HYDROGEN_MASS_FRAC * N_ELEC)
-B_cmb = CMB_MAGNETIC_FIELD # Gauss
-# B = 1.e-6 # Gauss
-B = 1 # Gauss
-B_microG = B * 1.e6 # microGauss
 
 # classical electron radius
 r_0 = 1 * ELECTRONCHARGE**2 / (ELECTRONMASS * CLIGHT**2)
 
+# I used the following relations which use the Lorentz factor
+# but there are predefined functions in Physics.py which use the momentum
 
 def b_coul(gamma, n_e):
+    # Sarazin 1999 eq 9 (from Rephaeli 1979 eq 2)
     return 1.2e-12 * n_e * (1. + (np.log(gamma/n_e)/75.))
 
 def b_icsync(gamma, B_sync):
+    # Sarazin 1999 eq 7
+    # converted from energy density field to equivalent magnetic field
     return (THOMPSON * gamma**2 / (6. * np.pi * ELECTRONMASS * CLIGHT)) * (B_sync**2 + B_cmb**2)
 
+# calculate total loss rate
 b_total_gamma = b_coul(gamma, n_e) + b_icsync(gamma, B)
+
+# convert total loss rate from lorentz factor to energy and momentum
 b_total_energy = b_total_gamma * ELECTRONMASS * CLIGHT**2
 b_total_mom = b_total_energy / (beta_factor(p) * ELECTRONMASS * CLIGHT**2)
 
+# can easily change to yr, Myr, Gyr
+seconds_in_yr = 60.*60.*24.*365.25
+seconds_in_Myr = 60.*60.*24.*365.25*1.e6
+seconds_in_Gyr = 60.*60.*24.*365.25*1.e9
+
+# calculate cooling timescales
 t_gamma = gamma / b_total_gamma
 t_gamma /= seconds_in_Myr
 
@@ -97,32 +114,3 @@ plt.xlim(p.min(), p.max())
 plt.xscale('log')
 plt.yscale('log')
 fig.savefig(output_path + f't_cool_p.png', dpi=500)
-
-
-p = np.logspace(-3, 8, num=121)
-p_low = p[np.where(p < 1.e3)]
-p_high = p[np.where(p >= 1.e3)]
-alpha = 2.2
-
-f_low = np.zeros((t.shape[0], p_low.shape[0]))
-f_high = np.zeros((t.shape[0], p_high.shape[0]))
-
-
-# b_icsync = sync_loss_rate(p_high, B) + ic_loss_rate(p_low, 0, 0)
-b_icsync = ic_sync_loss_rate(p_high, 0, B, 0)
-b_coul = coulomb_loss_rate(p_low, n_e)
-
-fig = plt.figure()
-
-for i in range(1, t.shape[0]):
-    # f_low[i, :] = E_to_inject*np.exp(-t[i] / injection_timescale) / ((1+p_low**(-2))) * (p_low**(-alpha+1) / (alpha - 1)) 
-    f_low[i, :] = E_to_inject*np.exp(-t[i] / injection_timescale) / (b_coul * (1+p_low**(-2))) * (p_low**(-alpha+1) / (alpha - 1)) 
-    # f_high[i, :] = E_to_inject*np.exp(-t[i] / injection_timescale) / (p_high**2) * (p_high**(-alpha+1) / (alpha - 1)) 
-    f_high[i, :] = E_to_inject*np.exp(-t[i] / injection_timescale) / (b_icsync) * (p_high**(-alpha-1) / (alpha - 1)) 
-    plt.plot(p_low, p_low**alpha * f_low[i, :])
-    plt.plot(p_high, p_high**alpha * f_high[i, :])
-
-# plt.plot(p_low, p_low**alpha * f_low[-1, :])
-# plt.plot(p_high, p_high**alpha * f_high[-1, :])
-plt.yscale('log')
-plt.xscale('log')
