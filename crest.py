@@ -83,7 +83,7 @@ class CrestParameters:
 		self.HydrogenMassFrac            = 0.76
 		self.DiffusionTimeInGyr          = 0.
 		self.Lambda                      = 0.
-		self.Radiation_Field_in_eps_CMB  = -1. # if this value is -1 then it was not set
+		self.Eps_photon_in_CGS           = -1. # if this value is -1 then it was not set
 		self.Magnetic_Field_Amplification = -1. # if this value is -1 then it was not set
 		self.Amplification_Flag			  = -1. # if this value is -1 then it was not set
 		self.MeanMolecularWeight          = 1.
@@ -293,8 +293,8 @@ class CrestSnapshot:
 
 				# Spectrum Data
 				blocksize = int(struct.unpack('I', f.read(size_i))[0])
-				if self.version >= 202305:
-					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d)
+				if self.version >= 202303:
+					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d) 
 				elif self.version == 201903:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
 				elif self.version == 201902:
@@ -324,7 +324,7 @@ class CrestSnapshot:
 				if self.version>=201902:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
 
-				if self.version>=202305:
+				if self.version>=202303:
 					self.time_since_injection = np.ndarray(self.nPart, dtype=float)
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
@@ -347,7 +347,7 @@ class CrestSnapshot:
 				for j in np.arange(3):
 					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
-				if self.version>=202305:
+				if self.version>=202303:
 					self.time_since_injection[:]      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for i in np.arange(self.nPart):
@@ -755,7 +755,7 @@ class ArepoTracerOutput:
 			self.B = np.array([mag_x.T, mag_y.T, mag_z.T]).T
 			self.n_gas = hf['TracerData/Density'][()]
 			self.u_therm = hf['TracerData/InternalEnergy'][()]
-			
+
 			if self.flag_photon_energy_density:
 				self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
 
