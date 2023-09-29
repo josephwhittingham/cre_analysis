@@ -1514,10 +1514,10 @@ class ArepoTracerOutput:
 
 			for i in range(self.nSnap):
 
-				d27[i] = self.time.flatten()[i]
+				d22[i] = self.time.flatten()[i]
 
 				if self.flag_comoving_integration_on:
-					d28[i] = self.dtValues.flatten()[i]
+					d23[i] = self.dtValues.flatten()[i]
 
 				next_timestep_start_index += len(self.ID[i])
 				d24[i] = next_timestep_start_index
