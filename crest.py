@@ -703,6 +703,8 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
 		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
+		self.flag_magnetic_components_every_timestep = hf['Header'].attrs['TracerMagneticComponentsEveryTimestepFlag']
+		self.flag_shock_dir_every_timestep = hf['Header'].attrs['TracerShockDirEveryTimestepFlag']
 		# if the flag does not exist, set it to True - previously eps_ph was always written
 		self.flag_photon_energy_density = hf['Header'].attrs.get('PhotonEnergyDensityFlag', True)
 
@@ -1259,6 +1261,7 @@ class ArepoTracerOutput:
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
 						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True,
+						flag_magnetic_components_every_timestep = False, flag_shock_dir_every_timestep = False,
 						flag_photon_energy_density = False, hubble_param = 1):
 		""" Create new empty tracer data
 
@@ -1282,6 +1285,10 @@ class ArepoTracerOutput:
 		   flag_comoving_integration_on (bool) : default False
 
 		   flag_tracer_pos_every_timestep (bool) : default True
+
+		   flag_magnetic_components_every_timestep (bool) : default False
+
+		   flag_shock_dir_every_timestep (bool) : default False
 		   
 		   flag_photon_energy_density (bool) : default False
 
@@ -1299,6 +1306,8 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = flag_comoving_integration_on
 		self.hubble_param = hubble_param
 		self.flag_tracer_pos_every_timestep = flag_tracer_pos_every_timestep
+		self.flag_magnetic_components_every_timestep = flag_magnetic_components_every_timestep
+		self.flag_shock_dir_every_timestep = flag_shock_dir_every_timestep
 		self.flag_photon_energy_density = flag_photon_energy_density
 
 		self.UnitLength_in_cm = UnitLength_in_cm
@@ -1336,7 +1345,6 @@ class ArepoTracerOutput:
 		ret.flag_cosmic_ray_shock_acceleration = self.flag_cosmic_ray_shock_acceleration
 		ret.flag_cosmic_ray_magnetic_obliquity = self.flag_cosmic_ray_magnetic_obliquity
 		ret.flag_cosmic_ray_sn_injection = self.flag_cosmic_ray_sn_injection
-
 
 		ret._var_name = self._var_name
 		ret._var_dtype = self._var_dtype
@@ -1431,6 +1439,8 @@ class ArepoTracerOutput:
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
 			header.attrs['HubbleParam'] = self.hubble_param
 			header.attrs['TracerPositionEveryTimestepFlag'] = int(self.flag_tracer_pos_every_timestep)
+			header.attrs['TracerMagneticComponentsEveryTimestepFlag'] = int(self.flag_magnetic_components_every_timestep)
+			header.attrs['TracerShockDirEveryTimestepFlag'] = int(self.flag_shock_dir_every_timestep)
 			header.attrs['PhotonEnergyDensityFlag'] = int(self.flag_photon_energy_density)
 			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=int)
 
