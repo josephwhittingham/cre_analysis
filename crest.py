@@ -767,10 +767,10 @@ class ArepoTracerOutput:
 				shock_y = hf['TracerData/ShockDirection/Y'][()]
 				shock_z = hf['TracerData/ShockDirection/Z'][()]
 				self.ShockDir = np.array([shock_x.T, shock_y.T, shock_z.T]).T
-				self.eps_CRp_acc = hf['TracerData/ShockDissipatedThermalEnergy'][()]
+				self.eps_CRp_acc = hf['TracerData/CRpInjectedEnergy'][()]
 				self.n_gasPreShock = hf['TracerData/PreShockDensity'][()]
 				self.n_gasPostShock = hf['TracerData/PostShockDensity'][()]
-				self.VShock = hf['TracerData/ShockVelocity'][()]
+				self.VShock = hf['TracerData/PostShockSpeed'][()]
 				self.timeShockCross = hf['TracerData/ShockCrossingTime'][()]
 
 				if self.flag_cosmic_ray_sn_injection:
@@ -1260,7 +1260,7 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
-						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True,
+						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = False,
 						flag_magnetic_components_every_timestep = False, flag_shock_dir_every_timestep = False,
 						flag_photon_energy_density = False, hubble_param = 1):
 		""" Create new empty tracer data
@@ -1471,10 +1471,10 @@ class ArepoTracerOutput:
 			    d13 = group_shock.create_dataset('Y', (len_tracer_data,) , dtype=float)
 			    d14 = group_shock.create_dataset('Z', (len_tracer_data,) , dtype=float)
 
-			    d15 = group_dat.create_dataset('ShockDissipatedThermalEnergy', (len_tracer_data,) , dtype=float)
+			    d15 = group_dat.create_dataset('CRpInjectedEnergy', (len_tracer_data,), dtype=float)
 			    d16 = group_dat.create_dataset('PreShockDensity', (len_tracer_data,) , dtype=float)
 			    d17 = group_dat.create_dataset('PostShockDensity', (len_tracer_data,) , dtype=float)
-			    d18 = group_dat.create_dataset('ShockVelocity', (len_tracer_data,) , dtype=float)
+			    d18 = group_dat.create_dataset('PostShockSpeed', (len_tracer_data,) , dtype=float)
 			    d19 = group_dat.create_dataset('ShockCrossingTime', (len_tracer_data,) , dtype=float)
 
 			    if self.flag_cosmic_ray_magnetic_obliquity:
