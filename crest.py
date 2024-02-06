@@ -83,7 +83,7 @@ class CrestParameters:
 		self.HydrogenMassFrac            = 0.76
 		self.DiffusionTimeInGyr          = 0.
 		self.Lambda                      = 0.
-		self.Radiation_Field_in_eps_CMB  = -1. # if this value is -1 then it was not set
+		self.Eps_photon_in_CGS           = -1. # if this value is -1 then it was not set
 		self.Magnetic_Field_Amplification = -1. # if this value is -1 then it was not set
 		self.Amplification_Flag			  = -1. # if this value is -1 then it was not set
 		self.MeanMolecularWeight          = 1.
@@ -293,8 +293,8 @@ class CrestSnapshot:
 
 				# Spectrum Data
 				blocksize = int(struct.unpack('I', f.read(size_i))[0])
-				if self.version >= 202305:
-					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d)
+				if self.version >= 202303:
+					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d) 
 				elif self.version == 201903:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
 				elif self.version == 201902:
@@ -324,7 +324,7 @@ class CrestSnapshot:
 				if self.version>=201902:
 					self.B = np.ndarray((self.nPart, 3), dtype=float)
 
-				if self.version>=202305:
+				if self.version>=202303:
 					self.time_since_injection = np.ndarray(self.nPart, dtype=float)
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
@@ -347,7 +347,7 @@ class CrestSnapshot:
 				for j in np.arange(3):
 					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
-				if self.version>=202305:
+				if self.version>=202303:
 					self.time_since_injection[:]      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for i in np.arange(self.nPart):
@@ -715,6 +715,8 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = hf['Header'].attrs['ComovingIntegrationOnFlag']
 		self.hubble_param = hf['Header'].attrs['HubbleParam']
 		self.flag_tracer_pos_every_timestep = hf['Header'].attrs['TracerPositionEveryTimestepFlag']
+		self.flag_magnetic_components_every_timestep = hf['Header'].attrs['TracerMagneticComponentsEveryTimestepFlag']
+		self.flag_shock_dir_every_timestep = hf['Header'].attrs['TracerShockDirEveryTimestepFlag']
 		# if the flag does not exist, set it to True - previously eps_ph was always written
 		self.flag_photon_energy_density = hf['Header'].attrs.get('PhotonEnergyDensityFlag', True)
 
@@ -1318,6 +1320,7 @@ class ArepoTracerOutput:
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
 						flag_cosmic_ray_sn_injection = False, flag_cosmic_ray_jet_injection = False,
 						flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = True,
+						flag_magnetic_components_every_timestep = False, flag_shock_dir_every_timestep = False,
 						flag_photon_energy_density = False, hubble_param = 1):
 		""" Create new empty tracer data
 
@@ -1343,6 +1346,10 @@ class ArepoTracerOutput:
 		   flag_comoving_integration_on (bool) : default False
 
 		   flag_tracer_pos_every_timestep (bool) : default True
+
+		   flag_magnetic_components_every_timestep (bool) : default False
+
+		   flag_shock_dir_every_timestep (bool) : default False
 		   
 		   flag_photon_energy_density (bool) : default False
 
@@ -1361,6 +1368,8 @@ class ArepoTracerOutput:
 		self.flag_comoving_integration_on = flag_comoving_integration_on
 		self.hubble_param = hubble_param
 		self.flag_tracer_pos_every_timestep = flag_tracer_pos_every_timestep
+		self.flag_magnetic_components_every_timestep = flag_magnetic_components_every_timestep
+		self.flag_shock_dir_every_timestep = flag_shock_dir_every_timestep
 		self.flag_photon_energy_density = flag_photon_energy_density
 
 		self.UnitLength_in_cm = UnitLength_in_cm
@@ -1497,6 +1506,8 @@ class ArepoTracerOutput:
 			header.attrs['ComovingIntegrationOnFlag'] = int(self.flag_comoving_integration_on)
 			header.attrs['HubbleParam'] = self.hubble_param
 			header.attrs['TracerPositionEveryTimestepFlag'] = int(self.flag_tracer_pos_every_timestep)
+			header.attrs['TracerMagneticComponentsEveryTimestepFlag'] = int(self.flag_magnetic_components_every_timestep)
+			header.attrs['TracerShockDirEveryTimestepFlag'] = int(self.flag_shock_dir_every_timestep)
 			header.attrs['PhotonEnergyDensityFlag'] = int(self.flag_photon_energy_density)
 			header.create_dataset('AllTracerParticleIDs', data = np.unique(self.ID), dtype=int)
 
