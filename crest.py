@@ -708,7 +708,7 @@ class ArepoTracerOutput:
 		# if the flag does not exist, set it to True - previously eps_ph was always written
 		self.flag_photon_energy_density = hf['Header'].attrs.get('PhotonEnergyDensityFlag', True)
 
-		self.AllIDs = hf['Header/AllTracerParticleIDs'][()]
+		self.AllIDs = np.sort(hf['Header/AllTracerParticleIDs'][()])
 
 		self.nPart = self.AllIDs.shape[0]
 
@@ -758,6 +758,12 @@ class ArepoTracerOutput:
 			self.n_gas = hf['TracerData/Density'][()]
 			self.u_therm = hf['TracerData/InternalEnergy'][()]
 
+			self.next_timestep_start_index = hf['TracerData']['NextTimestepStartIndex'][()]
+			# insert 0th index for indices_i
+			self.indices_i = np.insert(self.next_timestep_start_index, 0, 0)
+			self.indices_f = self.next_timestep_start_index
+
+
 			if self.flag_photon_energy_density:
 				self.eps_photon = hf['TracerData/PhotonEnergyDensity'][()]
 
@@ -791,53 +797,82 @@ class ArepoTracerOutput:
 				print("CRE_ANALYSIS: reshape_output=True")
 				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
 
-				self.ID = self.ID.reshape(self.nSnap, self.nPart)
-				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
-				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
-				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
-				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
+				# reshape the data so that it has the shape (nSnap, nPart)
+				def reshape_arrays(array, is_3d=False):
+					snap_arrays = [array[start:end, :] if is_3d else array[start:end] for start, end in zip(self.indices_i, self.indices_f)]
+					IDs_current_tracers = [self.ID[start:end] for start, end in zip(self.indices_i, self.indices_f)]
+
+					if is_3d:
+						output_shape = (len(snap_arrays), self.nPart, 3)
+					else:
+						output_shape = (len(snap_arrays), self.nPart)
+
+
+					output_array = np.full(output_shape, np.nan)
+
+					for i, (subarray, current_tracers) in enumerate(zip(snap_arrays, IDs_current_tracers)):
+						if len(subarray) == 0:
+							continue
+
+						sorted = np.argsort(current_tracers)
+						indices = np.where(np.isin(self.AllIDs, current_tracers))[0]
+
+						if is_3d:
+							output_array[i, indices, :] = subarray[sorted]
+						else:
+							output_array[i, indices] = subarray[sorted]
+
+					return output_array
+				
+
+
+				self.pos = reshape_arrays(self.pos, is_3d=True)
+				self.B = reshape_arrays(self.B, is_3d=True)
+				self.n_gas = reshape_arrays(self.n_gas)
+				self.u_therm = reshape_arrays(self.u_therm)
 
 				if self.flag_photon_energy_density:
-					self.eps_photon = self.eps_photon.reshape(self.nSnap, self.nPart)
+					self.eps_photon = reshape_arrays(self.eps_photon)
 
 				if self.flag_cosmic_ray_shock_acceleration:
-					self.ShockFlag = self.ShockFlag.reshape(self.nSnap, self.nPart)
+				# LJ: TODO: check with Joe how to do this
+					self.ShockFlag = reshape_arrays(self.ShockFlag)
 
-					zeros = np.zeros([self.nSnap, self.nPart, 3])
-					zeros[np.where(self.ShockFlag > 1)] = self.ShockDir
-					self.ShockDir = zeros
+					# zeros = np.zeros([self.nSnap, self.nPart, 3])
+					# zeros[np.where(self.ShockFlag > 1)] = self.ShockDir
+					# self.ShockDir = zeros
 
-					zeros = np.zeros([self.nSnap, self.nPart])
-					zeros[np.where(self.ShockFlag > 1)] = self.eps_CRp_acc
-					self.eps_CRp_acc = zeros
-					zeros[np.where(self.ShockFlag > 1)] = self.n_gasPreShock
-					self.n_gasPreShock = zeros
-					zeros[np.where(self.ShockFlag > 1)] = self.n_gasPostShock
-					self.n_gasPostShock = zeros
-					zeros[np.where(self.ShockFlag > 1)] = self.VShock
-					self.VShock = zeros
-					zeros[np.where(self.ShockFlag > 1)] = self.timeShockCross
-					self.timeShockCross = zeros
+					# zeros = np.zeros([self.nSnap, self.nPart])
+					# zeros[np.where(self.ShockFlag > 1)] = self.eps_CRp_acc
+					# self.eps_CRp_acc = zeros
+					# zeros[np.where(self.ShockFlag > 1)] = self.n_gasPreShock
+					# self.n_gasPreShock = zeros
+					# zeros[np.where(self.ShockFlag > 1)] = self.n_gasPostShock
+					# self.n_gasPostShock = zeros
+					# zeros[np.where(self.ShockFlag > 1)] = self.VShock
+					# self.VShock = zeros
+					# zeros[np.where(self.ShockFlag > 1)] = self.timeShockCross
+					# self.timeShockCross = zeros
 
-					if self.flag_cosmic_ray_sn_injection:
-						zeros[np.where(self.ShockFlag > 1)] = self.theta
-						self.timeShockCross = zeros
+					# if self.flag_cosmic_ray_sn_injection:
+					# 	zeros[np.where(self.ShockFlag > 1)] = self.theta
+					# 	self.timeShockCross = zeros
 
-					self.ShockDir = self.ShockDir.reshape(self.nSnap, self.nPart, 3)
-					self.eps_CRp_acc = self.eps_CRp_acc.reshape(self.nSnap, self.nPart)
-					self.n_gasPreShock = self.n_gasPreShock.reshape(self.nSnap, self.nPart)
-					self.n_gasPostShock = self.n_gasPostShock.reshape(self.nSnap, self.nPart)
-					self.VShock = self.VShock.reshape(self.nSnap, self.nPart)
-					self.timeShockCross = self.timeShockCross.reshape(self.nSnap, self.nPart)
+					# self.ShockDir = self.ShockDir.reshape(self.nSnap, self.nPart, 3)
+					# self.eps_CRp_acc = self.eps_CRp_acc.reshape(self.nSnap, self.nPart)
+					# self.n_gasPreShock = self.n_gasPreShock.reshape(self.nSnap, self.nPart)
+					# self.n_gasPostShock = self.n_gasPostShock.reshape(self.nSnap, self.nPart)
+					# self.VShock = self.VShock.reshape(self.nSnap, self.nPart)
+					# self.timeShockCross = self.timeShockCross.reshape(self.nSnap, self.nPart)
 
-					if self.flag_cosmic_ray_sn_injection:
-						self.theta = self.theta.reshape(self.nSnap, self.nPart)
+					# if self.flag_cosmic_ray_sn_injection:
+						# self.theta = self.theta.reshape(self.nSnap, self.nPart)
 
 				if self.flag_cosmic_ray_sn_injection:
-					self.eps_CRp_inj = self.eps_CRp_inj.reshape(self.nSnap, self.nPart)
+					self.eps_CRp_inj = reshape_arrays(self.eps_CRp_inj)
 
 				if self.flag_comoving_integration_on:
-					self.dtValues = self.dtValues.reshape(self.nSnap)
+					self.dtValues = reshape_arrays(self.dtValues)	
 
 		if verbose:
 			print("Data was read successfully")
