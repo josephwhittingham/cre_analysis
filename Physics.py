@@ -141,10 +141,22 @@ def chi(p):
 def bremsstrahlung_loss_rate(p, n_gas):
 	return n_gas * gamma_factor(p) * ELECTRONCHARGE**4 / (ELECTRONMASS**2 * CLIGHT**3) * ALPHA_FINESTRUCTURE * chi(p)
 
+# Functions to calculate A_bol (see Pfrommer et al. 2022, Equ. 34 and 35)
+from scipy.special import beta as betafunc
+from scipy.special import betainc
+
+def betai (a, b, x) :
+  return betainc(a, b, x) * betafunc(a, b)
+
+def bracket(q,alpha):
+    return  0.5 * betai( (alpha-2.)/2., (3.-alpha)/2., 1./(1+q**2) ) + q**(-1.+alpha) * (np.sqrt(1. + q**2) - 1.)
+
+def A_bol(q, alpha):
+  return bracket(q,alpha)/(alpha-1)
 
 
 ######################################################################################
-def SolutionSteadyStateElectrons(p, param, part, tp_id, snap, cre_inj):
+def SolutionSteadyStateElectrons(p, param, part, tp_id, snap, cre_inj, add_CMB=False):
 	# Calculates the steady state spectrum of a tracer particle at given snapshot
 	#
 	# p       Momenta
@@ -163,10 +175,15 @@ def SolutionSteadyStateElectrons(p, param, part, tp_id, snap, cre_inj):
 
 	iInj = np.where(p >= cre_inj.pInj)[0][0]
 
-	fA[ : iInj] = np.divide(cre_inj.injRate / (cre_inj.alphaInj - 1.) * np.power(cre_inj.pInj, 1. - cre_inj.alphaInj), np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))[ : iInj]))
-	fA[iInj : ] = np.multiply(cre_inj.injRate / (cre_inj.alphaInj - 1.), np.divide( np.power(p, 1. - cre_inj.alphaInj),  np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))))[iInj : ] )
+	if add_CMB:
+		fA[iInj : ] = np.multiply(cre_inj.injRate / (cre_inj.alphaInj - 1.), np.divide( np.power(p, 1. - cre_inj.alphaInj),  np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))))[iInj : ] )
+		fA[ : iInj] = np.divide(cre_inj.injRate / (cre_inj.alphaInj - 1.) * np.power(cre_inj.pInj, 1. - cre_inj.alphaInj), np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap], part.B[tp_id, snap], z)))[ : iInj]))
+	else: # substract CMB because CMB included in eps_photon of tracer output
+		fA[iInj : ] = np.multiply(cre_inj.injRate / (cre_inj.alphaInj - 1.), np.divide( np.power(p, 1. - cre_inj.alphaInj),  np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap] - CMB_ENERGY_DENSITY , part.B[tp_id, snap], z)))))[iInj : ] )
+		fA[ : iInj] = np.divide(cre_inj.injRate / (cre_inj.alphaInj - 1.) * np.power(cre_inj.pInj, 1. - cre_inj.alphaInj), np.abs(np.add(bremsstrahlung_loss_rate(p, part.n_gas[tp_id, snap]), np.add(coulomb_loss_rate(p, ne), ic_sync_loss_rate(p, part.eps_photon[tp_id, snap] - CMB_ENERGY_DENSITY, part.B[tp_id, snap], z)))[ : iInj]))
 
 	return fA
+
 
 ######################################################################################
 def SolutionSteadyStateElectronsWithCutoff(p, param, cInj, comp, V, B, BRat, ne, n_gas, eps_photon, z):
