@@ -215,7 +215,7 @@ def check_encoding():
 class CrestSnapshot:
 	""" class for spectral snapshots of CREST """
 
-	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None, use_HDF5=True):
+	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None, use_HDF5=True, galaxy=False):
 		"""
 		Initialize an instance of CREST snapshot.
 
@@ -238,6 +238,7 @@ class CrestSnapshot:
 		self._var_store = None
 
 		self._use_hdf5 = use_HDF5		# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
+		self._galaxy   = galaxy			# use this switch for large (galaxy) simulations with many tracers
 
 		if file_name is not None:
 			self.read_data(file_name, verbose=verbose, get_only_header=get_only_header, specific_fields=specific_fields)
@@ -292,10 +293,13 @@ class CrestSnapshot:
 			if not get_only_header:
 
 				# Spectrum Data
-				blocksize = int(struct.unpack('I', f.read(size_i))[0])
+				if self._galaxy: # for galaxy setup: changed int to long because of large particle numbers
+					blocksize = int(struct.unpack('l', f.read(8))[0])
+				else: # default behaviour
+					blocksize = int(struct.unpack('I', f.read(size_i))[0])
 				if self.version >= 202303:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d) 
-				elif self.version == 201903:
+				elif self.version >= 201903:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
 				elif self.version == 201902:
 					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 10 * size_d)
