@@ -707,7 +707,8 @@ class ArepoTracerOutput:
 
 		hf = h5py.File(file_name, 'r')
 
-		self._version = hf['Header'].attrs['TracerOutputVersion']
+		self._version = hf['Header'].attrs.get('TracerOutputVersion', int(20240000))
+		# if TracerOutputVersion not recorded (done as of ~12.2023), set it to this value
 		self.flag_cosmic_ray_shock_acceleration = hf['Header'].attrs['CosmicRaysShockAccelerationFlag']
 		self.flag_cosmic_ray_magnetic_obliquity = hf['Header'].attrs['CosmicRaysMagneticObliquityFlag']
 		self.flag_cosmic_ray_sn_injection = hf['Header'].attrs['CosmicRaysSNInjectionFlag']
@@ -1318,7 +1319,8 @@ class ArepoTracerOutput:
 
 	def create_new_data(self, nSnap, nPart, version=202201, UnitLength_in_cm = 1., UnitMass_in_g = 1., UnitVelocity_in_cm_per_s = 1.,
 						flag_cosmic_ray_shock_acceleration = False, flag_cosmic_ray_magnetic_obliquity = False,
-						flag_cosmic_ray_sn_injection = False, flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = False,
+						flag_cosmic_ray_sn_injection = False, flag_cosmic_ray_jet_injection = False,
+						flag_comoving_integration_on = False, flag_tracer_pos_every_timestep = False,
 						flag_magnetic_components_every_timestep = False, flag_shock_dir_every_timestep = False,
 						flag_photon_energy_density = False, hubble_param = 1):
 		""" Create new empty tracer data
