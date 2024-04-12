@@ -399,7 +399,7 @@ class ArepoTracerOutput:
 
 
 	# instance variables
-	def __init__(self, file_base = None, file_numbers=None, version=None, units = False,
+	def __init__(self, file_base = None, file_numbers=None, version=None, cgs_units = False,
 	      verbose = False, read_only_ic= False, specific_particles=None, first_snap=None,
 		  last_snap=None, specific_fields=None, splitted_files=True, use_HDF5=True,
 		  reshape_output=True):
@@ -415,7 +415,7 @@ class ArepoTracerOutput:
 		   file_numbers (int or list): File numbers of data files to be read (version >= 2020-01)
 		       Default: None (No data files to be read)
 
-		   units (bool): Flag if the values should be converted to cgs units immediately
+		   cgs_units (bool): Flag if the values should be converted to cgs units immediately
 
 		   read_only_ic (bool): Read only header and 0th snapshot/initial conditions
 
@@ -462,12 +462,12 @@ class ArepoTracerOutput:
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
-			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, units=units, verbose=verbose)
+			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
 
 		elif file_base is not None:
 			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
 
-			self.read_data(file_base, file_numbers=file_numbers, units=units, verbose=verbose, read_only_ic=read_only_ic,
+			self.read_data(file_base, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose, read_only_ic=read_only_ic,
 						   specific_particles=specific_particles, first_snap=first_snap, last_snap=last_snap, specific_fields=specific_fields)
 
 	@property
@@ -498,9 +498,8 @@ class ArepoTracerOutput:
 	def var_cgs_factor(self):
 		""" List of cgs conversion factors """
 		return self._var_cgs_factors
-	
+
 	def define_variables(self, new=False):
-		import astropy.units as u
 		""" Define names, types, and unit conversion factor
 
 		Args:
@@ -900,7 +899,7 @@ class ArepoTracerOutput:
 			print("Data was read successfully")
 
 		if units:
-			self.scale_to_units(verbose)
+			self.scale_to_cgs_units(verbose)
 
 
 	def read_header(self, file_base, verbose = False, splitted_files=True):
@@ -996,7 +995,7 @@ class ArepoTracerOutput:
 			if verbose:
 				print("Header was successfully read")
 
-	def read_data(self, file_base, file_numbers=None, units = False, verbose = False, read_only_ic = False, specific_particles = None, first_snap = None, last_snap = None, specific_fields=None):
+	def read_data(self, file_base, file_numbers=None, cgs_units = False, verbose = False, read_only_ic = False, specific_particles = None, first_snap = None, last_snap = None, specific_fields=None):
 		""" Read in the header data from file. This function is automatically called if class constructor is called with the file name"""
 
 		if self.version <= 201903:
