@@ -167,7 +167,7 @@ def SolutionSteadyStateElectrons(p, param, part, tp_id, snap, cre_inj, add_CMB=F
 
 	fA = np.zeros(p.size)
 
-	ne = electron_density(part.n_gas[tp_id, snap], param.n_elec, param.HydrogenMassFrac)
+	ne = electron_density(part.n_gas[tp_id, snap], param.x_e, param.HydrogenMassFrac)
 	if param.ComovingIntegrationOn == 0:
 		z = 0.
 	else:
@@ -437,14 +437,14 @@ def pIf(p, pMinCool):
 	return 1/3. * (np.multiply(np.power(a,2), np.power(np.power(a,3) + 4.5 * np.sqrt(4 * np.power(a,4) + 81 * np.power(a,2)) + 40.5 * a,-1/3.)) + np.power(np.power(a,3) + 4.5 * np.sqrt(4 * np.power(a,4) + 81 * np.power(a,2)) + 40.5 * a,1/3.) + a)
 
 def cooled_power_law(p, C, alpha, del_t, n_gas):
-	n_elec = 1.157
+	x_e = 1.157
 	HydrogenMassFrac = 0.76
 
 	# Scaling relations
 	eps_star_cmb_ratio = 1.e+4 * np.power(n_gas, 2./3.)
 	eps_photon = eps_star_cmb_ratio * CMB_ENERGY_DENSITY
 	B = 1.e-04 * np.power(n_gas, 2./3.)
-	ne = electron_density(n_gas,n_elec,HydrogenMassFrac)
+	ne = electron_density(n_gas,x_e,HydrogenMassFrac)
 
 	pMaxCool = 3. * ELECTRONMASS * CLIGHT / ( 4. * THOMPSON * (CMB_ENERGY_DENSITY * (pow(1+0,4) + np.square(B / CMB_MAGNETIC_FIELD)) + eps_photon ) * del_t) ;
 	pMinCool = coulomb_loss_rate(15., ne) * del_t

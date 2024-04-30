@@ -79,7 +79,7 @@ class CrestParameters:
 		self.FlagExternalInjection       = 0
 
 		# Cooling & Diffusion
-		self.n_elec                      = 1.157
+		self.x_e                         = 1.157
 		self.HydrogenMassFrac            = 0.76
 		self.DiffusionTimeInGyr          = 0.
 		self.Lambda                      = 0.
