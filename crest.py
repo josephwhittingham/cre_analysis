@@ -470,7 +470,7 @@ class ArepoTracerOutput:
 		if self._use_hdf5 and file_base is not None:
 			self.read_header_hdf5(file_base, verbose=verbose)
 
-			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, cgs_units=cgs_units, verbose=verbose)
+			self.read_data_hdf5(file_base, reshape_output=reshape_output, file_numbers=file_numbers, verbose=verbose)
 
 		elif file_base is not None:
 			self.read_header(file_base, verbose=verbose, splitted_files=splitted_files)
