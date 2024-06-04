@@ -112,6 +112,9 @@ class CrestParameters:
 		if file_name is not None:
 			self.read_data(file_name, verbose)
 
+		#Legacy option for test pipeline
+		self.n_elec = self.x_e
+
 	def __del__(self):
 		for var in vars(self):
 			setattr(self,var,None)
