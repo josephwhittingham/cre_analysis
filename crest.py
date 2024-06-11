@@ -333,6 +333,7 @@ class CrestSnapshot:
 
 				if self.version>=202303:
 					self.time_since_injection = np.ndarray(self.nPart, dtype=float)
+					self.Bmag = np.ndarray(self.nPart, dtype=float)
 
 				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				if self.version <= 201902:
@@ -605,9 +606,9 @@ class ArepoTracerOutput:
 									1]
 
 		elif self._version >= 201903:
-			self._var_name = ['time', 'pos', 'B', 'n_gas', 'u_therm', 'eps_photon']
-			self._var_dtype = [np.float64, np.ndarray, np.ndarray, np.float32, np.float32, np.float32]
-			self._var_cgs_factor = [L/V, L, B, N, V**2, E]
+			self._var_name = ['time', 'pos', 'B', 'Bmag', 'n_gas', 'u_therm', 'eps_photon']
+			self._var_dtype = [np.float64, np.ndarray, np.ndarray, np.float32, np.float32, np.float32, np.float32]
+			self._var_cgs_factor = [L/V, L, B, B, N, V**2, E]
 
 			if self._use_hdf5:
 				if self.flag_comoving_integration_on:
@@ -766,6 +767,7 @@ class ArepoTracerOutput:
 			mag_y = hf['TracerData/MagneticField/Y'][()]
 			mag_z = hf['TracerData/MagneticField/Z'][()]
 			self.B = np.array([mag_x.T, mag_y.T, mag_z.T]).T
+			self.Bmag = hf['TracerData/MagneticFieldStrength'][()]
 			self.n_gas = hf['TracerData/Density'][()]
 			self.u_therm = hf['TracerData/InternalEnergy'][()]
 
@@ -805,6 +807,7 @@ class ArepoTracerOutput:
 				self.ID = self.ID.reshape(self.nSnap, self.nPart)
 				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
 				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
+				self.Bmag = self.Bmag.reshape(self.nSnap, self.nPart)
 				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
 				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
 
@@ -1469,6 +1472,7 @@ class ArepoTracerOutput:
 			d6 = group_mag.create_dataset('Y', (len_tracer_data,) , dtype=float)
 			d7 = group_mag.create_dataset('Z', (len_tracer_data,) , dtype=float)
 
+			d7b = group_dat.create_dataset('MagneticFieldStrength', (len_tracer_data,) , dtype=float)
 			d8 = group_dat.create_dataset('Density', (len_tracer_data,) , dtype=float)
 			d9 = group_dat.create_dataset('InternalEnergy', (len_tracer_data,) , dtype=float)
 
@@ -1511,6 +1515,7 @@ class ArepoTracerOutput:
 				d5[i] = self.B[:,:,0].flatten()[i]
 				d6[i] = self.B[:,:,1].flatten()[i]
 				d7[i] = self.B[:,:,2].flatten()[i]
+				d7b[i] = self.Bmag.flatten()[i]
 				d8[i] = self.n_gas.flatten()[i]
 				d9[i] = self.u_therm.flatten()[i]
 
