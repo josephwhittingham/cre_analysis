@@ -112,6 +112,9 @@ class CrestParameters:
 		if file_name is not None:
 			self.read_data(file_name, verbose)
 
+		#Legacy option for test pipeline
+		self.n_elec = self.x_e
+
 	def __del__(self):
 		for var in vars(self):
 			setattr(self,var,None)
@@ -215,7 +218,7 @@ def check_encoding():
 class CrestSnapshot:
 	""" class for spectral snapshots of CREST """
 
-	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None, use_HDF5=True, high_tracer_number=False):
+	def __init__(self, file_name = None, verbose = False, get_only_header = False, specific_fields=None, use_HDF5=True, high_tracer_number=False): 
 		"""
 		Initialize an instance of CREST snapshot.
 
@@ -825,39 +828,11 @@ class ArepoTracerOutput:
 				print("CRE_ANALYSIS: reshape_output=True")
 				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
 
-
-				# reshape the data so that it has the shape (nSnap, nPart)
-				def reshape_arrays(array, is_3d=False):
-					snap_arrays = [array[start:end, :] if is_3d else array[start:end] for start, end in zip(self.indices_i, self.indices_f)]
-					IDs_current_tracers = [self.ID_all_times[start:end] for start, end in zip(self.indices_i, self.indices_f)]
-
-					if is_3d:
-						output_shape = (len(snap_arrays), self.nPart, 3)
-					else:
-						output_shape = (len(snap_arrays), self.nPart)
-
-
-					output_array = np.full(output_shape, np.nan)
-
-					for i, (subarray, current_tracers) in enumerate(zip(snap_arrays, IDs_current_tracers)):
-						if len(subarray) == 0:
-							continue
-						sorted = np.argsort(current_tracers)
-						indices = np.where(np.isin(self.AllIDs, current_tracers))[0]
-
-						if is_3d:
-							output_array[i, indices, :] = subarray[sorted]
-						else:
-							output_array[i, indices] = subarray[sorted]
-
-					return output_array
-
-				# self.ID_all_times = reshape_arrays(self.ID_all_times)
-				self.pos = reshape_arrays(self.pos, is_3d=True)
-				self.B = reshape_arrays(self.B, is_3d=True)
-				self.Bmag = reshape_arrays(self.Bmag)
-				self.n_gas = reshape_arrays(self.n_gas)
-				self.u_therm = reshape_arrays(self.u_therm)
+				self.ID = self.ID.reshape(self.nSnap, self.nPart)
+				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
+				self.B = self.B.reshape(self.nSnap, self.nPart, 3) 
+				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
+				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
 
 				if self.flag_photon_energy_density:
 					self.eps_photon = reshape_arrays(self.eps_photon)
