@@ -777,6 +777,7 @@ class ArepoTracerOutput:
 			hf = h5py.File(file_name, 'r')
 
 			self.time = hf['TracerData/Time'][()]
+			self.ID = hf['TracerData/ParticleIDs'][()]
 			self.ID_all_times = hf['TracerData/ParticleIDs'][()]
 			pos_x = hf['TracerData/Coordinates/X'][()]
 			pos_y = hf['TracerData/Coordinates/Y'][()]
@@ -836,18 +837,19 @@ class ArepoTracerOutput:
 				print("CRE_ANALYSIS: reshape_output=True")
 				print("CRE_ANALYSIS: reshaping Arepo tracer output into shapes of (nSnap, nPart)\n")
 
+				
 				self.ID = self.ID.reshape(self.nSnap, self.nPart)
 				self.pos = self.pos.reshape(self.nPos, self.nPart, 3)
-				self.B = self.B.reshape(self.nSnap, self.nPart, 3) 
+				self.B = self.B.reshape(self.nSnap, self.nPart, 3)
+				self.Bmag = self.Bmag.reshape(self.nSnap, self.nPart)
 				self.n_gas = self.n_gas.reshape(self.nSnap, self.nPart)
 				self.u_therm = self.u_therm.reshape(self.nSnap, self.nPart)
 
 				if self.flag_photon_energy_density:
-					self.eps_photon = reshape_arrays(self.eps_photon)
-					
+					self.eps_photon = self.eps_photon.reshape(self.nSnap, self.nPart)
+
 				if self.flag_cosmic_ray_shock_acceleration:
-				# LJ: TODO: check with Joe how to do this
-					self.ShockFlag = reshape_arrays(self.ShockFlag)
+					self.ShockFlag = self.ShockFlag.reshape(self.nSnap, self.nPart)
 
 					zeros = np.zeros([self.nSnap, self.nPart, 3])
 					zeros[np.where(self.ShockFlag > 1)] = self.ShockDir
@@ -869,25 +871,21 @@ class ArepoTracerOutput:
 						zeros[np.where(self.ShockFlag > 1)] = self.theta
 						self.timeShockCross = zeros
 
-					# self.ShockDir = reshape_arrays(self.ShockDir, is_3d=True)
-					# self.eps_CRp_acc = reshape_arrays(self.eps_CRp_acc)
-					# self.n_gasPreShock = reshape_arrays(self.n_gasPreShock)
-					# self.n_gasPostShock = reshape_arrays(self.n_gasPostShock)
-					# self.VShock = reshape_arrays(self.VShock)
-					# self.timeShockCross = reshape_arrays(self.timeShockCross)
+					self.ShockDir = self.ShockDir.reshape(self.nSnap, self.nPart, 3)
+					self.eps_CRp_acc = self.eps_CRp_acc.reshape(self.nSnap, self.nPart)
+					self.n_gasPreShock = self.n_gasPreShock.reshape(self.nSnap, self.nPart)
+					self.n_gasPostShock = self.n_gasPostShock.reshape(self.nSnap, self.nPart)
+					self.VShock = self.VShock.reshape(self.nSnap, self.nPart)
+					self.timeShockCross = self.timeShockCross.reshape(self.nSnap, self.nPart)
+
+					if self.flag_cosmic_ray_sn_injection:
+						self.theta = self.theta.reshape(self.nSnap, self.nPart)
 
 				if self.flag_cosmic_ray_sn_injection:
-					self.eps_CRp_inj = reshape_arrays(self.eps_CRp_inj)
-					self.theta = reshape_arrays(self.theta)
-
-					
-				if self.flag_cosmic_ray_jet_injection:
-					self.jet_passive_scalar = reshape_arrays(self.jet_passive_scalar)
-					self.vel = reshape_arrays(self.vel, is_3d=True)
-					self.eps_CRp_inj_jet = reshape_arrays(self.eps_CRp_inj_jet)
+					self.eps_CRp_inj = self.eps_CRp_inj.reshape(self.nSnap, self.nPart)
 
 				if self.flag_comoving_integration_on:
-					self.dtValues = reshape_arrays(self.dtValues)	
+					self.dtValues = self.dtValues.reshape(self.nSnap)
 
 		if verbose:
 			print("Data was read successfully")
