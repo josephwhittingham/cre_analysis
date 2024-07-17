@@ -29,78 +29,78 @@ class CrestParameters:
 		"""
 
 		# General Settings for I/O
-		self.OutputDir                   = ''
-		self.InputDataFile               = ''
-		self.InputDataFileBase           = ''
+		self.OutputDir				   = ''
+		self.InputDataFile			   = ''
+		self.InputDataFileBase		   = ''
 		self.InputTracerDataFileBase	 = ''
 		self.InputArepoDataFileBase		 = ''
 		self.InputFileFirstNum			 = 0
 		self.NumInputFiles				 = 0
 		self.MaxStepsReadIn				 = 0
-		self.SnapshotFileBase            = ''
-		self.OutputFileBase            	 = ''
+		self.SnapshotFileBase			= ''
+		self.OutputFileBase				 = ''
 		self.OutputVerbose				 = 0
 
 		# Settings for Discretization
-		self.NumberOfMomentumBins        = 0
-		self.CourantFac                  = 0.0
-		self.AlphaCoefficientMaximum     = 0.0
-		self.MaximumSubcycles_in_log2    = 0
-		self.MinimumMomentum             = 0.0
-		self.MaximumMomentum             = 0.0
-		self.TimeStepsUpdate             = 1
-		self.IncludeMaximumMomentum      = 0
+		self.NumberOfMomentumBins		= 0
+		self.CourantFac				  = 0.0
+		self.AlphaCoefficientMaximum	 = 0.0
+		self.MaximumSubcycles_in_log2	= 0
+		self.MinimumMomentum			 = 0.0
+		self.MaximumMomentum			 = 0.0
+		self.TimeStepsUpdate			 = 1
+		self.IncludeMaximumMomentum	  = 0
 
 		# CR density distribution function
-		self.AlphaSpectralIndex          = 0.0
-		self.MomentumLowCutoff           = 0.0
-		self.MomentumHighCutoff          = 0.0
-		self.NormalizationFactor         = 0.0
-		self.InitialSpectrumFile         = ''
-		self.UseInitialSpectrumFile      = 0
+		self.AlphaSpectralIndex		  = 0.0
+		self.MomentumLowCutoff		   = 0.0
+		self.MomentumHighCutoff		  = 0.0
+		self.NormalizationFactor		 = 0.0
+		self.InitialSpectrumFile		 = ''
+		self.UseInitialSpectrumFile	  = 0
 
 		# System of units (does not apply for electron energy/momentum)
-		self.UnitLength_in_cm            = 1.
-		self.UnitMass_in_g               = 1.
-		self.UnitVelocity_in_cm_per_s    = 1.
+		self.UnitLength_in_cm			= 1.
+		self.UnitMass_in_g			   = 1.
+		self.UnitVelocity_in_cm_per_s	= 1.
 
 		# Output Settings
-		self.OutputEverySnapshotOn       = 0
-		self.TimeOfFirstSnapshot         = 0.0
-		self.TimeBetSnapshot             = 0.01
+		self.OutputEverySnapshotOn	   = 0
+		self.TimeOfFirstSnapshot		 = 0.0
+		self.TimeBetSnapshot			 = 0.01
 		self.ComovingIntegrationOn   	 = 0
 
 		# Flags
-		self.FlagAllowSubcycles          = 1
-		self.FlagCooling                 = 1
+		self.FlagAllowSubcycles		  = 1
+		self.FlagCooling				 = 1
 		self.Flag_Fermi_I_Reacceleration = 1
 		self.Flag_Fermi_I_Acceleration   = 1
 		self.Flag_Fermi_II_Reacceleration= 1
-		self.FlagExternalInjection       = 0
+		self.FlagExternalInjection	   = 0
 
 		# Cooling & Diffusion
-		self.x_e                         = 1.157
-		self.HydrogenMassFrac            = 0.76
-		self.DiffusionTimeInGyr          = 0.
-		self.Lambda                      = 0.
-		self.Eps_photon_in_CGS           = -1. # if this value is -1 then it was not set
+		self.x_e						 = 1.157
+		self.HydrogenMassFrac			= 0.76
+		self.DiffusionTimeInGyr		  = 0.
+		self.Lambda					  = 0.
+		self.Eps_photon_in_CGS		   = -1. # if this value is -1 then it was not set
 		self.Magnetic_Field_Amplification = -1. # if this value is -1 then it was not set
 		self.Amplification_Flag			  = -1. # if this value is -1 then it was not set
-		self.MeanMolecularWeight          = 1.
+		self.MeanMolecularWeight		  = 1.
 
 		# parameters for shock injection
-		self.ShockParamA                 = 0.
-		self.ShockParamB                 = 0.
-		self.ShockParamC                 = 0.
+		self.ShockParamA				 = 0.
+		self.ShockParamB				 = 0.
+		self.ShockParamC				 = 0.
 		self.Acceleration_Max_Momentum   = 1.e20
-		self.zeta_pe                     = 0.
-		self.obliquity_critAngle         = -1.
-		self.obliquity_width             = -1.
-		self.obliquity_minEff            = -1.
-		self.obliquity_maxEff            = -1.
+		self.zeta_pe					 = 0.
+		self.obliquity_critAngle		 = -1.
+		self.obliquity_width			 = -1.
+		self.obliquity_minEff			= -1.
+		self.obliquity_maxEff			= -1.
 
 		# new parameters with tracer data
-		self.FunctionValueChop           = 1.e-30
+		self.FunctionValueChop		   = 1.e-30
 
 		# Semi analytic treatement
 		self.UseSemiAnalyticSolutionLow  = 1
@@ -233,7 +233,7 @@ class CrestSnapshot:
 		   get_only_header (bool): Read only header
 
 		   specific_fields (list): List of strings of the variable which should be stored,
-		                           e.g., ['ID', 'time']. Of no list is given, all variables are read.
+								   e.g., ['ID', 'time']. Of no list is given, all variables are read.
 		   use_HDF5 (bool): Not related to HDF5! This is to select whether the mass field of the tracer particle in the Crest snapshot is output or not (this field existed in the previous crest version and was used to calculate the tracer volume). True: the mass field is given in the output. False: the mass field is not given in the output.
 		"""
 		self._var_name = None
@@ -241,7 +241,7 @@ class CrestSnapshot:
 		self._var_store = None
 
 		self._use_hdf5 = use_HDF5		# By default use new HDF5 format; set = 0 to use original binary Arepo output instead
-		self._high_tracer_number = high_tracer_number			# use this switch for large simulations with many tracers
+		self.flag_high_tracer_number = high_tracer_number			# use this switch for large simulations with many tracers
 
 		if file_name is not None:
 			self.read_data(file_name, verbose=verbose, get_only_header=get_only_header, specific_fields=specific_fields)
@@ -252,10 +252,8 @@ class CrestSnapshot:
 			if(verbose):
 				print("Reading snapshot data from file '{:}'".format(file_name))
 
-
 			# Header information
 			blocksize = int(struct.unpack('I', f.read(size_i))[0])
-			headersize = 3 * size_i + size_d
 
 			self.version = int(  struct.unpack('i', f.read(size_i))[0])
 			if(verbose):
@@ -263,15 +261,22 @@ class CrestSnapshot:
 
 			if self.version <= 201902:
 				headersize = 3 * size_i + size_d
-			else: # version >= 201903
+			elif self.version <= 202406:
 				headersize = 4 * size_i + size_d
+			else:
+				headersize = 5 * size_i + size_d
 
 			if headersize != blocksize:
 				sys.exit("Size of header is {:d} bytes, but expexted {:d}".format(blocksize, headersize))
 
-			self.time    = float(struct.unpack('d', f.read(size_d))[0])
+			self.time	= float(struct.unpack('d', f.read(size_d))[0])
 			self.nPart   = int(  struct.unpack('i', f.read(size_i))[0])
 			self.nBins   = int(  struct.unpack('i', f.read(size_i))[0])
+
+			if self.version >= 202407:
+				self.flag_high_tracer_number = int( struct.unpack('i', f.read(size_i))[0])
+			else:
+				self.flag_high_tracer_number = 0 # Default for older versions
 
 			if self.version >= 201903:
 				self.flag_shock_acceleration = int(  struct.unpack('i', f.read(size_i))[0])
@@ -294,16 +299,15 @@ class CrestSnapshot:
 
 			# Data
 			if not get_only_header:
-
 				# Spectrum Data
-				if self._high_tracer_number: # for high number of tracers: Crest changed int to long for blocksize (done in Crest using Config flag)
+				if self.flag_high_tracer_number: # for high number of tracers: Crest changed int to long for blocksize (done in Crest using Config flag)
 					blocksize = int(struct.unpack('l', f.read(8))[0])
 				else: # default behaviour
 					blocksize = int(struct.unpack('I', f.read(size_i))[0])
 				if self.version >= 202406:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 12 * size_d)
 				elif self.version >= 202303:
-					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d) 
+					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 11 * size_d)
 				elif self.version >= 201903:
 					datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 10 * size_d)
 				elif self.version == 201902:
@@ -312,9 +316,6 @@ class CrestSnapshot:
 					datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 8 * size_d)
 				else:
 					sys.exit("Version {:d} not supported".format(self.version))
-
-				if blocksize != datasize:
-					sys.exit("Block size is {:d} bytes, but expexted {:d}".format(blocksize, datasize))
 
 				self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
 				self.id = np.ndarray(self.nPart, dtype=np.uint32)
@@ -340,43 +341,43 @@ class CrestSnapshot:
 				if self.version>=202406:
 					self.cumulative_injected_energy = np.ndarray(self.nPart, dtype=float)
 
-				self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
+				self.id[:]			 = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 				if self.version <= 201902:
 					self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 
 				if self._use_hdf5 == False:
-					self.mass[:]           = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+					self.mass[:]		   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
-				self.n_gas[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				self.u_therm[:]        = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-				self.eps_photon[:]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				self.n_gas[:]		  = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				self.u_therm[:]		= struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+				self.eps_photon[:]	 = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				if self.version>=201902:
 					for j in np.arange(3):
 						self.B[:, j]   = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 				else:
-					self.B[:]          = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+					self.B[:]		  = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for j in np.arange(3):
-					self.pos[:, j]     = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+					self.pos[:, j]	 = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				if self.version>=202303:
-					self.time_since_injection[:]      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+					self.time_since_injection[:]	  = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				if self.version>=202406:
 					self.cumulative_injected_energy[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
 				for i in np.arange(self.nPart):
-					self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
+					self.f[i, :]	  = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
 
 				# Determine which tracers exist at the current time based on the density value (for 'on the fly' tracer creation)
 				self.tracer_exists = np.where(self.n_gas > 0, 1, 0)
 
-				if not self._high_tracer_number:
+				if not self.flag_high_tracer_number:
 					blocksize_end = int(struct.unpack('I',f.read(size_i))[0])
 				else:
 					blocksize_end = int(struct.unpack('l',f.read(8))[0])
-				
+
 				if blocksize_end != blocksize:
 					sys.exit("3rd data block not correctly enclosed")
 
@@ -399,21 +400,21 @@ class ArepoTracerOutput:
 	Example:
 	   Load a tracer output with path and name to file by, e.g.,
 
-	      $ data = ArepoTracerOutput("path_to_file/fileBase")
+		  $ data = ArepoTracerOutput("path_to_file/fileBase")
 
 	   and access all x positions
 
-	      $ data.x
+		  $ data.x
 
 	   The data structure can be sliced or single particles/snapshots be picked by
 
-	      $ data[1, 2] # particle 1 and snapshot 2
-	      $ data[:, 1] # all particles and snapshot 1
+		  $ data[1, 2] # particle 1 and snapshot 2
+		  $ data[:, 1] # all particles and snapshot 1
 
 	   Create new empty tracer data for 10 snapshots and 20 particles
 
-	     $ data2 = ArepoTracerOutput()
-	     $ data2.
+		 $ data2 = ArepoTracerOutput()
+		 $ data2.
 
 	"""
 
@@ -430,7 +431,7 @@ class ArepoTracerOutput:
 		   file_base (str): Base file name (version >= 2020-01) or full file name (version <= 2019-03)
 
 		   file_numbers (int or list): File numbers of data files to be read (version >= 2020-01)
-		       Default: None (No data files to be read)
+			   Default: None (No data files to be read)
 
 		   cgs_units (bool): Flag if the values should be converted to cgs units immediately
 
@@ -441,20 +442,20 @@ class ArepoTracerOutput:
 		   last_snap (int): Last snapshot to be read in (exclusive, relative to first file number)
 
 		   specific_fields (list): List of strings of the variable which should be stored,
-		      e.g., ['ID', 'time']. Of no list is given, all variables are read.
-		      Possible variables names are:
-		       - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm']
-		       - shock acceleration: ['ShockFlag', 'eps_CRp_acc',
-		                              'n_gasPreShock', 'n_gasPostShock',
-		                              'VShock', 'timeShockCross', 'ShockDir']
-		       - magnetic obliquity: ['theta']
-		       - SN injection: ['eps_CRp_inj']
-		       - output photon energy density: ['eps_photon']
-		      Please note that some variable blocks are only available if the code was compiled
-		      and run with these configurations.
+			  e.g., ['ID', 'time']. Of no list is given, all variables are read.
+			  Possible variables names are:
+			   - standard: ['time', 'pos', 'B',  'n_gas', 'u_therm']
+			   - shock acceleration: ['ShockFlag', 'eps_CRp_acc',
+									  'n_gasPreShock', 'n_gasPostShock',
+									  'VShock', 'timeShockCross', 'ShockDir']
+			   - magnetic obliquity: ['theta']
+			   - SN injection: ['eps_CRp_inj']
+			   - output photon energy density: ['eps_photon']
+			  Please note that some variable blocks are only available if the code was compiled
+			  and run with these configurations.
 
-		    splitted_files (bool): Separate header and data files (default, version >= 2020-01).
-		       Chose 'False' if file of version <= 2019-03. Default: True
+			splitted_files (bool): Separate header and data files (default, version >= 2020-01).
+			   Chose 'False' if file of version <= 2019-03. Default: True
 
 		"""
 
@@ -522,9 +523,9 @@ class ArepoTracerOutput:
 		Args:
 
 		new (bool) : Flag whether we create new tracer data instead of reading from a file
-		    default False.
+			default False.
 
-        """
+		"""
 
 		size_i, size_I, size_f, size_d = check_encoding()
 
@@ -913,8 +914,8 @@ class ArepoTracerOutput:
 			if self._traceroutput_headersize == 3 * size_d:
 
 				print("Warning: Old tracer output, data equivalent to version '2019-01'")
-				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
-				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
+				self.UnitLength_in_cm		 = struct.unpack('d', f.read(size_d))[0]
+				self.UnitMass_in_g			= struct.unpack('d', f.read(size_d))[0]
 				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
 
 				# Hard coded to guarantee readability of old tracer output files
@@ -926,20 +927,20 @@ class ArepoTracerOutput:
 
 			elif self._traceroutput_headersize == 3 * size_d + 3 * size_i:
 				# version 2019-02
-				self._version                 = struct.unpack('i', f.read(size_i))[0]
-				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
-				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
+				self._version				 = struct.unpack('i', f.read(size_i))[0]
+				self.UnitLength_in_cm		 = struct.unpack('d', f.read(size_d))[0]
+				self.UnitMass_in_g			= struct.unpack('d', f.read(size_d))[0]
 				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
-				self.nPart                    = struct.unpack('i', f.read(size_i))[0]
+				self.nPart					= struct.unpack('i', f.read(size_i))[0]
 				self._traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
 
 			else:
 				# version 2019-03 or newer
-				self._version                 = struct.unpack('i', f.read(size_i))[0]
-				self.UnitLength_in_cm         = struct.unpack('d', f.read(size_d))[0]
-				self.UnitMass_in_g            = struct.unpack('d', f.read(size_d))[0]
+				self._version				 = struct.unpack('i', f.read(size_i))[0]
+				self.UnitLength_in_cm		 = struct.unpack('d', f.read(size_d))[0]
+				self.UnitMass_in_g			= struct.unpack('d', f.read(size_d))[0]
 				self.UnitVelocity_in_cm_per_s = struct.unpack('d', f.read(size_d))[0]
-				self.nPart                    = struct.unpack('i', f.read(size_i))[0]
+				self.nPart					= struct.unpack('i', f.read(size_i))[0]
 				self.flag_cosmic_ray_shock_acceleration = bool(struct.unpack('i', f.read(size_i))[0])
 				self.flag_cosmic_ray_magnetic_obliquity = bool(struct.unpack('i', f.read(size_i))[0])
 				self.flag_cosmic_ray_sn_injection = bool(struct.unpack('i', f.read(size_i))[0])
@@ -1288,7 +1289,7 @@ class ArepoTracerOutput:
 		""" Create new empty tracer data
 
 		Args:
-           nSnap (int) : Number of snapshots
+		   nSnap (int) : Number of snapshots
 
 		   nPart (int) : Number of tracer particles
 
@@ -1311,7 +1312,7 @@ class ArepoTracerOutput:
 		   flag_magnetic_components_every_timestep (bool) : default False
 
 		   flag_shock_dir_every_timestep (bool) : default False
-		   
+
 		   flag_photon_energy_density (bool) : default False
 
 		"""
@@ -1488,28 +1489,28 @@ class ArepoTracerOutput:
 				d10 = group_dat.create_dataset('PhotonEnergyDensity', (len_tracer_data,) , dtype=float)
 
 			if self.flag_cosmic_ray_shock_acceleration:
-			    d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data,) , dtype=int)
+				d11 = group_dat.create_dataset('ShockFlag', (len_tracer_data,) , dtype=int)
 
-			    d12 = group_shock.create_dataset('X', (len_tracer_data,) , dtype=float)
-			    d13 = group_shock.create_dataset('Y', (len_tracer_data,) , dtype=float)
-			    d14 = group_shock.create_dataset('Z', (len_tracer_data,) , dtype=float)
+				d12 = group_shock.create_dataset('X', (len_tracer_data,) , dtype=float)
+				d13 = group_shock.create_dataset('Y', (len_tracer_data,) , dtype=float)
+				d14 = group_shock.create_dataset('Z', (len_tracer_data,) , dtype=float)
 
-			    d15 = group_dat.create_dataset('CRpInjectedEnergy', (len_tracer_data,), dtype=float)
-			    d16 = group_dat.create_dataset('PreShockDensity', (len_tracer_data,) , dtype=float)
-			    d17 = group_dat.create_dataset('PostShockDensity', (len_tracer_data,) , dtype=float)
-			    d18 = group_dat.create_dataset('PostShockSpeed', (len_tracer_data,) , dtype=float)
-			    d19 = group_dat.create_dataset('ShockCrossingTime', (len_tracer_data,) , dtype=float)
+				d15 = group_dat.create_dataset('CRpInjectedEnergy', (len_tracer_data,), dtype=float)
+				d16 = group_dat.create_dataset('PreShockDensity', (len_tracer_data,) , dtype=float)
+				d17 = group_dat.create_dataset('PostShockDensity', (len_tracer_data,) , dtype=float)
+				d18 = group_dat.create_dataset('PostShockSpeed', (len_tracer_data,) , dtype=float)
+				d19 = group_dat.create_dataset('ShockCrossingTime', (len_tracer_data,) , dtype=float)
 
-			    if self.flag_cosmic_ray_magnetic_obliquity:
-			        d20 = group_dat.create_dataset('MagneticObliquity', (len_tracer_data,) , dtype=float)
+				if self.flag_cosmic_ray_magnetic_obliquity:
+					d20 = group_dat.create_dataset('MagneticObliquity', (len_tracer_data,) , dtype=float)
 
 			if self.flag_cosmic_ray_sn_injection:
-			    d21 = group_dat.create_dataset('InjectionEnergy', (len_tracer_data,) , dtype=float)
+				d21 = group_dat.create_dataset('InjectionEnergy', (len_tracer_data,) , dtype=float)
 
 			d22 = group_dat.create_dataset('Time', (self.nSnap,) , dtype=double)
 
 			if self.flag_comoving_integration_on:
-			    d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=double)
+				d23 = group_dat.create_dataset('dtValues', (self.nSnap,) , dtype=double)
 
 			d24 = group_dat.create_dataset('NextTimestepStartIndex', (self.nSnap,), dtype=int)
 
@@ -1745,8 +1746,8 @@ def ConvertTracerOutput(file_name, out_version=201901):
 		print("Converting tracer output to version '2019-01'")
 		if traceroutput_headersize == 3 * size_d:
 
-			UnitLength_in_cm         = struct.unpack('d', file_in.read(size_d))[0]
-			UnitMass_in_g            = struct.unpack('d', file_in.read(size_d))[0]
+			UnitLength_in_cm		 = struct.unpack('d', file_in.read(size_d))[0]
+			UnitMass_in_g			= struct.unpack('d', file_in.read(size_d))[0]
 			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
 
 
@@ -1758,8 +1759,8 @@ def ConvertTracerOutput(file_name, out_version=201901):
 			traceroutput_headersize = 3 * size_i + 3 * size_d
 
 			traceroutput_tracersize = 2 * size_i + 2 * size_I + 17 * size_f + 1 * size_d
-			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d
-			tracersize_after_temp   = 2 * size_i              + 13 * size_f
+			tracersize_before_temp  =			  2 * size_I +  4 * size_f + 1 * size_d
+			tracersize_after_temp   = 2 * size_i			  + 13 * size_f
 			blocksize = int(struct.unpack('i',file_in.read(size_i))[0])
 
 			nPart = blocksize // (traceroutput_tracersize + 1 * size_f) # the old version contains one additional float
@@ -1769,13 +1770,13 @@ def ConvertTracerOutput(file_name, out_version=201901):
 		elif traceroutput_headersize == 3 * size_d + 3 * size_i:
 			# first 2019-01 version with the variable temp included
 			version = struct.unpack('i', f.read(size_i))[0]
-			UnitLength_in_cm         = struct.unpack('d', file_in.read(size_d))[0]
-			UnitMass_in_g            = struct.unpack('d', file_in.read(size_d))[0]
+			UnitLength_in_cm		 = struct.unpack('d', file_in.read(size_d))[0]
+			UnitMass_in_g			= struct.unpack('d', file_in.read(size_d))[0]
 			UnitVelocity_in_cm_per_s = struct.unpack('d', file_in.read(size_d))[0]
-			nPart                    = struct.unpack('i', f.read(size_i))[0]
+			nPart					= struct.unpack('i', f.read(size_i))[0]
 			traceroutput_tracersize = struct.unpack('i', f.read(size_i))[0]
-			tracersize_before_temp  =              2 * size_I +  4 * size_f + 1 * size_d
-			tracersize_after_temp   = 2 * size_i              + 13 * size_f
+			tracersize_before_temp  =			  2 * size_I +  4 * size_f + 1 * size_d
+			tracersize_after_temp   = 2 * size_i			  + 13 * size_f
 			if traceroutput_tracersize ==  2 * size_i + 2 * size_I + 18 * size_f + 1 * size_d:
 				traceroutput_tracersize -= size_f
 			else:
