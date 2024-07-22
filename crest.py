@@ -263,11 +263,13 @@ class CrestSnapshot:
                 headersize = 3 * size_i + size_d
             elif self.version <= 202406:
                 headersize = 4 * size_i + size_d
-            else:
+            elif self.version <= 202407:
                 headersize = 5 * size_i + size_d
+            else:
+                headersize = 6 * size_i + size_d
 
             if headersize != blocksize:
-                sys.exit("Size of header is {:d} bytes, but expexted {:d}".format(blocksize, headersize))
+                sys.exit("Size of header is {:d} bytes, but expected {:d}".format(blocksize, headersize))
 
             self.time    = float(struct.unpack('d', f.read(size_d))[0])
             self.nPart   = int(  struct.unpack('i', f.read(size_i))[0])
@@ -282,6 +284,11 @@ class CrestSnapshot:
                 self.flag_shock_acceleration = int(  struct.unpack('i', f.read(size_i))[0])
             else:
                 self.flag_shock_acceleration = 1 # Default for older versions
+
+            if self.version >= 202408:
+                self.flag_mach_number = int( struct.unpack('i', f.read(size_i))[0])
+            else:
+                self.flag_mach_number = 0 # Default for older versions
 
             if int(struct.unpack('I',f.read(size_i))[0]) != blocksize:
                 sys.exit("header data block not correctly enclosed")
@@ -338,6 +345,9 @@ class CrestSnapshot:
                     self.time_since_injection = np.ndarray(self.nPart, dtype=float)
                     self.Bmag = np.ndarray(self.nPart, dtype=float)
 
+                if self.flag_mach_number == 1:
+                     self.highest_mach_number = np.ndarray(self.nPart, dtype=float)
+
                 if self.version>=202406:
                     self.cumulative_injected_energy = np.ndarray(self.nPart, dtype=float)
 
@@ -364,6 +374,9 @@ class CrestSnapshot:
                 if self.version>=202303:
                     self.time_since_injection[:]      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
+                if self.flag_mach_number == 1:
+                    self.highest_mach_number[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
                 if self.version>=202406:
                     self.cumulative_injected_energy[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
@@ -380,7 +393,6 @@ class CrestSnapshot:
 
                 if blocksize_end != blocksize:
                     sys.exit("3rd data block not correctly enclosed")
-
 
 
 ####################################################################################################
