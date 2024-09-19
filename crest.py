@@ -768,7 +768,7 @@ class ArepoTracerOutput:
         if verbose:
             print("Header was read successfully")
 
-    def read_data_hdf5(self, file_base, reshape_output, file_numbers=None, units = False, verbose = False):
+    def read_data_hdf5(self, file_base, reshape_output, file_numbers=None, cgs_units = False, verbose = False):
 
         self.initialize_variables()
 
@@ -1294,7 +1294,7 @@ class ArepoTracerOutput:
             self.scale_to_cgs_units(verbose)
 
 
-    def scale_to_units(self, verbose=False):
+    def scale_to_cgs_units(self, verbose=False):
         if not self.All_Units_in_cgs:
             if verbose:
                 print("Scale to cgs with UnitLength_in_cm = {:.3e}, UnitMass_in_g = {:.3e}, UnitVeloctiy_in_cm_per_s = {:.3e}".format(self.UnitLength_in_cm, self.UnitMass_in_g, self.UnitVelocity_in_cm_per_s))
