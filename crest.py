@@ -311,7 +311,9 @@ class CrestSnapshot:
                     blocksize = int(struct.unpack('l', f.read(8))[0])
                 else: # default behaviour
                     blocksize = int(struct.unpack('I', f.read(size_i))[0])
-                if self.version >= 202409:
+                if self.version >= 202501:
+                    datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 15 * size_d)
+                elif self.version >= 202409:
                     datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 13 * size_d)
                 elif self.version >= 202406:
                     datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 12 * size_d)
@@ -356,6 +358,11 @@ class CrestSnapshot:
                 if self.version>=202409:
                     self.jet_passive_scalar = np.ndarray(self.nPart, dtype=float)
 
+                if self.version>=202501:
+                    self.time_since_first_injection = np.ndarray(self.nPart, dtype=float)
+                    self.density_at_injection = np.ndarray(self.nPart, dtype=float)
+
+
                 self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
                 if self.version <= 201902:
                     self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
@@ -378,7 +385,10 @@ class CrestSnapshot:
 
                 if self.version>=202303:
                     self.time_since_injection[:]      = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-
+ 
+                if self.version>=202501:
+                    self.time_since_first_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+                    
                 if self.flag_mach_number == 1:
                     self.highest_mach_number[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
@@ -387,6 +397,10 @@ class CrestSnapshot:
 
                 if self.version>=202409:
                     self.jet_passive_scalar[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
+                if self.version>=202501:
+                    self.density_at_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
                 for i in np.arange(self.nPart):
                     self.f[i, :]      = struct.unpack('{:d}d'.format(self.nBins), f.read(size_d * self.nBins))
 
