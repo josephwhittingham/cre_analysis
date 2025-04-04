@@ -119,6 +119,6 @@ if __name__ == "__main__":
 
           for snap_no in range(25+1):
               print("    Snap no: {}".format(snap_no))
-              crest_file   = CrestSnapshot("./{}/{}/{}{:03d}.dat".format(sim_dir[i], mach_variation[j], cre_filebase, snap_no), high_tracer_number=True)
+              crest_file = CrestSnapshot("./{}/{}/{}{:03d}.dat".format(sim_dir[i], mach_variation[j], cre_filebase, snap_no), high_tracer_number=True)
 
               tracer_vol = load_tracer_volumes(snap_no, sim_dir[i], mach_variation[j], crest_file)
