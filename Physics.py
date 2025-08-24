@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.integrate import simps, quad
+from scipy.integrate import simpson, quad
 
 THOMPSON             = 6.65245873e-25
 ELECTRONMASS         = 9.1093829e-28
@@ -265,18 +265,23 @@ def EnergyDensity(p,f):
 ##########
 # Analytic Solution for Adiabatic Only Changes
 def SolutionAdiabaticChanges(p, rho_0, rho_curr, param):
+
+	# For comparing floats (make sure we're looking at the right bin!)
+	eps =np.diff(np.log10(p))[0] / 2
+
 	# rho_0, C_0, q_0 initial values for density, normalization, cutoff
 	fA = np.zeros(p.size)
 	# higher and lower cutoffs
-	if param.MomentumLowCutoff < p[2]:
+	if param.MomentumLowCutoff - eps < p[2]:
 		pL = 0.
 	else:
-		pL = ( param.MomentumLowCutoff * pow(rho_curr/rho_0,1./3.))
+		pL = ( param.MomentumLowCutoff * pow(rho_curr/rho_0,1./3.)) - eps
 
-	if param.MomentumHighCutoff > p[-2]:
+	if param.MomentumHighCutoff + eps > p[-2]:
 		pH = 1e99
 	else:
-		pH = ( param.MomentumHighCutoff * pow(rho_curr/rho_0,1./3.))
+		pH = ( param.MomentumHighCutoff * pow(rho_curr/rho_0,1./3.)) + eps
+
 	for i in np.arange(p.size):
 		if p[i] >= pL and p[i] <= pH:
 			fA[i] = pow((rho_curr/rho_0),(param.AlphaSpectralIndex+2.)/3.) * param.NormalizationFactor * np.power(p[i],-param.AlphaSpectralIndex)
