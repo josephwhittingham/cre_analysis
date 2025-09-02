@@ -311,7 +311,13 @@ class CrestSnapshot:
                     blocksize = int(struct.unpack('l', f.read(8))[0])
                 else: # default behaviour
                     blocksize = int(struct.unpack('I', f.read(size_i))[0])
-                if self.version >= 202501:
+                if self.version >= 202509:
+                    datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 19 * size_d)
+                elif self.version >= 202508:
+                    datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 18 * size_d)
+                elif self.version >= 202505:
+                    datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 15 * size_d)
+                elif self.version >= 202501:
                     datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 15 * size_d)
                 elif self.version >= 202409:
                     datasize = self.nPart * ( self.nBins * size_d + 1 * size_I + 13 * size_d)
@@ -330,6 +336,10 @@ class CrestSnapshot:
 
                 self.f = np.ndarray((self.nPart, self.nBins), dtype = float)
                 self.id = np.ndarray(self.nPart, dtype=np.uint32)
+
+                if self.version >= 202508:
+                    self.encountered_warning = np.ndarray(self.nPart, dtype=np.uint32)
+
                 if self.version <= 201902:
                     self.parent_cell_id = np.ndarray(self.nPart, dtype=np.uint32)
 
@@ -363,7 +373,22 @@ class CrestSnapshot:
                     self.density_at_injection = np.ndarray(self.nPart, dtype=float)
 
 
+                if self.version>=202505 and self.version <= 202508:
+                    self.density_at_peak_injection = np.ndarray(self.nPart, dtype=float)
+                    self.energy_at_peak_injection = np.ndarray(self.nPart, dtype=float)
+                    self.total_energy_density = np.ndarray(self.nPart, dtype=float)
+
+                if self.version >= 202509:
+                    self.density_at_last_injection = np.ndarray(self.nPart, dtype=float)
+                    self.number_density_at_last_injection = np.ndarray(self.nPart, dtype=float)
+                    self.total_number_density = np.ndarray(self.nPart, dtype=float)
+                    self.total_energy_density = np.ndarray(self.nPart, dtype=float)
+
                 self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
+
+                if self.version >= 202508:
+                    self.encountered_warning[:] =  struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
+
                 if self.version <= 201902:
                     self.parent_cell_id[:] = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
 
@@ -394,6 +419,17 @@ class CrestSnapshot:
 
                 if self.version>=202406:
                     self.cumulative_injected_energy[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
+                if self.version>=202505 and self.version <= 202508:
+                    self.density_at_peak_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+                    self.energy_at_peak_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+                    self.total_energy_density[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+
+                if self.version >= 202509:
+                    self.density_at_last_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+                    self.number_density_at_last_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+                    self.total_number_density[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
+                    self.total_energy_density[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
                 if self.version>=202409:
                     self.jet_passive_scalar[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
