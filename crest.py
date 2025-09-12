@@ -311,7 +311,9 @@ class CrestSnapshot:
                     blocksize = int(struct.unpack('l', f.read(8))[0])
                 else: # default behaviour
                     blocksize = int(struct.unpack('I', f.read(size_i))[0])
-                if self.version >= 202509:
+                if self.version >= 202510:
+                    datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 20 * size_d)
+                elif self.version >= 202509:
                     datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 19 * size_d)
                 elif self.version >= 202508:
                     datasize = self.nPart * ( self.nBins * size_d + 2 * size_I + 18 * size_d)
@@ -383,6 +385,8 @@ class CrestSnapshot:
                     self.number_density_at_last_injection = np.ndarray(self.nPart, dtype=float)
                     self.total_number_density = np.ndarray(self.nPart, dtype=float)
                     self.total_energy_density = np.ndarray(self.nPart, dtype=float)
+
+                if self.version >= 202510:
                     self.time_of_tracer_creation = np.ndarray(self.nPart, dtype=float)
 
                 self.id[:]             = struct.unpack('{:d}I'.format(self.nPart), f.read(size_I * self.nPart))
@@ -415,9 +419,9 @@ class CrestSnapshot:
                 if self.version>=202501:
                     self.time_since_first_injection[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
                 
-                if self.version>=202509:
+                if self.version>=202510:
                     self.time_of_tracer_creation[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
-                    
+
                 if self.flag_mach_number == 1:
                     self.highest_mach_number[:] = struct.unpack('{:d}d'.format(self.nPart), f.read(size_d * self.nPart))
 
